@@ -1,0 +1,6 @@
+.claude
+dev
+charts
+docs
+*.db*
+internal/web/jstest

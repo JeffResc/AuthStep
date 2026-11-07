@@ -1,0 +1,70 @@
+{{/* Install guides. The section for the visitor's platform (.OS) opens first.
+     Sources and verification status are listed in PLAN.md, milestone 6. */}}
+{{define "guides"}}
+<div class="guides">
+  <details{{if eq .OS "windows"}} open{{end}}>
+    <summary>Windows</summary>
+    <ol class="steps">
+      <li>Download the <strong>.p12</strong> file and open it. The Certificate Import Wizard starts.</li>
+      <li>Leave <strong>Store Location</strong> as <strong>Current User</strong> and continue.</li>
+      <li>Enter the passphrase that was shown when you created the certificate.</li>
+      <li>Let Windows choose the certificate store, then finish.</li>
+    </ol>
+    <p>Edge and Chrome use certificates from this store. When a site asks, choose this certificate. For Firefox, see below.</p>
+  </details>
+
+  <details{{if eq .OS "macos"}} open{{end}}>
+    <summary>macOS</summary>
+    <p>Recommended: on the Mac, use <a href="/certs/apple">Add Apple device</a>. The Mac creates a key that cannot be exported.</p>
+    <ol class="steps">
+      <li>Download the profile.</li>
+      <li>Choose <strong>Apple menu → System Settings</strong>, click <strong>General</strong>, then <strong>Device Management</strong>. You may need to scroll down.</li>
+      <li>In the <strong>Downloaded</strong> section, double-click the profile, then click <strong>Install</strong>.</li>
+    </ol>
+    <p>Safari and Chrome then offer the certificate when a site asks. You can also open a <strong>.p12</strong> file to add it to your login keychain.</p>
+  </details>
+
+  <details{{if eq .OS "ios"}} open{{end}}>
+    <summary>iPhone and iPad</summary>
+    <ol class="steps">
+      <li>Open AuthStep in Safari on the iPhone or iPad. From a computer, use <a href="/devices/add">Set up another device</a> and scan the QR code.</li>
+      <li>Tap <a href="/certs/apple">Add Apple device</a> and download the profile.</li>
+      <li>Within 8 minutes, open <strong>Settings</strong>, tap <strong>Profile Downloaded</strong>, then tap <strong>Install</strong> in the upper-right corner and follow the steps. iOS deletes a downloaded profile that is not installed in time.</li>
+    </ol>
+    <p>If Stolen Device Protection is on and you are not in a familiar location, turn it off before you install the profile and turn it on again afterwards. Installed profiles are listed in <strong>Settings → General → VPN &amp; Device Management</strong>.</p>
+  </details>
+
+  <details{{if eq .OS "android"}} open{{end}}>
+    <summary>Android</summary>
+    <ol class="steps">
+      <li>On the phone, open AuthStep in Chrome, create a <a href="/certs/new">new certificate</a> and download the <strong>.p12</strong> file. From a computer, use <a href="/devices/add">Set up another device</a> and scan the QR code.</li>
+      <li>Open <strong>Settings → Security &amp; privacy → More security settings → Encryption &amp; credentials → Install a certificate</strong>.</li>
+      <li>Choose the user certificate for apps and VPN, not the CA or Wi-Fi certificate.</li>
+      <li>Select the downloaded file, enter the passphrase and give the certificate a name.</li>
+    </ol>
+    <p>These names are from Pixel phones on Android 14 and later. Other phone makers use similar but different menu names.</p>
+  </details>
+
+  <details{{if eq .OS "linux"}} open{{end}}>
+    <summary>Linux</summary>
+    <p>Chrome and Chromium: open <code>chrome://settings/certificates</code>, click <strong>Manage Certificates</strong> and import the <strong>.p12</strong> file. Or use the command line (package <code>libnss3-tools</code> or <code>nss-tools</code>):</p>
+    <pre><code>pk12util -d sql:$HOME/.local/share/pki/nssdb -i certificate.p12</code></pre>
+    <p class="muted small">If you have an older <code>$HOME/.pki/nssdb</code> folder, Chrome uses that one instead.</p>
+  </details>
+
+  <details>
+    <summary>Firefox (any system)</summary>
+    <ol class="steps">
+      <li>Open <strong>Settings → Privacy &amp; Security</strong> and go to <strong>Certificates</strong>.</li>
+      <li>Click <strong>View Certificates</strong>, select the <strong>Your Certificates</strong> tab and click <strong>Import</strong>.</li>
+      <li>Choose the <strong>.p12</strong> file and enter the passphrase.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Command-line tools</summary>
+    <pre><code>curl --cert-type P12 --cert certificate.p12:PASSPHRASE https://service.example.com/</code></pre>
+    <p>Tools that need PEM files can use the certificate <strong>.pem</strong> and private key <strong>.pem</strong> downloads.</p>
+  </details>
+</div>
+{{end}}

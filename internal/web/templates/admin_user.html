@@ -1,0 +1,41 @@
+{{define "content"}}
+{{template "adminnav" "users"}}
+{{$sub := .View.Summary.Sub}}
+<section class="card">
+  <div class="card-head">
+    <h1>{{.View.Summary.Email}}</h1>
+    {{if .View.HasActive}}<a class="button danger" href="/admin/users/{{pathEscape $sub}}/revoke-all">Revoke all</a>{{end}}
+  </div>
+  <p class="muted">{{.View.Summary.Name}} · {{.View.Summary.ActiveCerts}} of {{.View.Summary.Limit}} certificates in use</p>
+
+  <form method="post" action="/admin/users/{{pathEscape $sub}}/limit" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <label for="user-limit">Certificate limit</label>
+    <input id="user-limit" name="limit" type="number" min="0" max="1000"
+           value="{{with .View.Summary.LimitOverride}}{{.}}{{end}}" placeholder="Default ({{.View.DefaultLimit}})">
+    <button type="submit" class="button secondary">Save</button>
+  </form>
+  <p class="muted small">Leave the limit empty to use the default.</p>
+
+  {{if .View.Certificates}}
+  <table class="certs">
+    <thead>
+      <tr><th>Device</th><th>Status</th><th>Expires</th><th>Serial</th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .View.Certificates}}
+      <tr>
+        <td>{{.DeviceName}}</td>
+        <td><span class="status status-{{.Status}}">{{.Status}}</span></td>
+        <td>{{.Expires}}</td>
+        <td class="mono small">{{.Serial}}</td>
+        <td class="actions">{{if .Revocable}}<a href="/admin/certs/{{pathEscape .ID}}/revoke">Revoke</a>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No certificates.</p>
+  {{end}}
+</section>
+{{end}}

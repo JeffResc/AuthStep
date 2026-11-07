@@ -1,0 +1,53 @@
+# Local Dex for development. Two connectors:
+#   "In group"  (mockCallback): kilgore@kilgore.trout, email verified, groups [authors]
+#   "No group"  (mockPassword): same user with no groups; username kilgore, password dev-password
+#
+# docker run --rm -p 127.0.0.1:5556:5556 -v "$PWD/dev/dex.yaml:/etc/dex/config.yaml:ro" \
+#   ghcr.io/dexidp/dex:v2.46.1 dex serve /etc/dex/config.yaml
+#
+# AUTHSTEP_BASE_URL=http://localhost:8080 AUTHSTEP_DB_PATH=dev/authstep.db \
+# AUTHSTEP_OIDC_ISSUER=http://localhost:5556/dex AUTHSTEP_OIDC_CLIENT_ID=authstep \
+# AUTHSTEP_OIDC_CLIENT_SECRET=authstep-dev-secret \
+# AUTHSTEP_ISSUER_GROUP=authors AUTHSTEP_ADMIN_GROUP=authors \
+# AUTHSTEP_CA_URL=https://localhost:9000 AUTHSTEP_CA_ROOT=dev/step/certs/root_ca.crt \
+# AUTHSTEP_CA_PROVISIONER=authstep-jwk AUTHSTEP_CA_PROVISIONER_KEY=dev/step/authstep-jwk.jwe \
+# AUTHSTEP_CA_PROVISIONER_PASSWORD_FILE=dev/step/password.txt \
+# AUTHSTEP_INTERNAL_TLS_CERT=dev/step/authstep-internal.crt AUTHSTEP_INTERNAL_TLS_KEY=dev/step/authstep-internal.key \
+# AUTHSTEP_SCEP_URL=https://localhost:9000/scep/authstep-scep \
+# AUTHSTEP_PROFILE_SIGNING_CERT=dev/step/profile-signer.crt AUTHSTEP_PROFILE_SIGNING_KEY=dev/step/profile-signer.key \
+# AUTHSTEP_SMTP_ADDR=localhost:1025 AUTHSTEP_SMTP_FROM="AuthStep <authstep@example.com>" \
+# AUTHSTEP_ADMIN_EMAIL=security@example.com go run ./cmd/authstep
+#
+# Mail goes to Mailpit (web UI on http://localhost:8025):
+#   docker run --rm -e MP_SMTP_DISABLE_RDNS=true -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit:v1.31.6
+# (without MP_SMTP_DISABLE_RDNS each message waits ~10s for a reverse DNS lookup)
+#
+# The CA comes from dev/step-ca-init.sh.
+issuer: http://localhost:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: authstep
+    name: AuthStep (dev)
+    secret: authstep-dev-secret
+    redirectURIs:
+      - http://localhost:8080/auth/callback
+
+connectors:
+  - type: mockCallback
+    id: in-group
+    name: In group
+  - type: mockPassword
+    id: no-group
+    name: No group
+    config:
+      username: kilgore
+      password: dev-password

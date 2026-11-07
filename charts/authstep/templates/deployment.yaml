@@ -1,0 +1,222 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "authstep.fullname" . }}
+  labels:
+    {{- include "authstep.labels" . | nindent 4 }}
+spec:
+  # SQLite on a ReadWriteOnce volume: exactly one pod, and the old one stops before the new one starts.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "authstep.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "authstep.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if .Values.litestream.enabled }}
+        checksum/litestream: {{ include (print $.Template.BasePath "/litestream-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.litestream.enabled }}
+      initContainers:
+        # Restore the database from the replica when the volume is empty (e.g. a new volume).
+        - name: litestream-restore
+          image: "{{ .Values.litestream.image.repository }}:{{ .Values.litestream.image.tag }}"
+          imagePullPolicy: {{ .Values.litestream.image.pullPolicy }}
+          args: ["restore", "-config", "/etc/litestream/litestream.yml", "-if-db-not-exists", "-if-replica-exists", {{ include "authstep.dbPath" . | quote }}]
+          {{- include "authstep.litestreamEnv" . | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            {{- include "authstep.litestreamMounts" . | nindent 12 }}
+        # Native sidecar: starts before AuthStep and replicates for the life of the pod.
+        - name: litestream
+          image: "{{ .Values.litestream.image.repository }}:{{ .Values.litestream.image.tag }}"
+          imagePullPolicy: {{ .Values.litestream.image.pullPolicy }}
+          restartPolicy: Always
+          args: ["replicate", "-config", "/etc/litestream/litestream.yml"]
+          {{- include "authstep.litestreamEnv" . | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.litestream.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- include "authstep.litestreamMounts" . | nindent 12 }}
+      {{- end }}
+      containers:
+        - name: authstep
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: webhooks
+              containerPort: 9443
+          env:
+            - name: AUTHSTEP_BASE_URL
+              value: {{ required "baseURL is required" .Values.baseURL | quote }}
+            - name: AUTHSTEP_DB_PATH
+              value: {{ include "authstep.dbPath" . }}
+            - name: AUTHSTEP_OIDC_ISSUER
+              value: {{ required "oidc.issuer is required" .Values.oidc.issuer | quote }}
+            - name: AUTHSTEP_OIDC_CLIENT_ID
+              value: {{ .Values.oidc.clientID | quote }}
+            - name: AUTHSTEP_OIDC_CLIENT_SECRET_FILE
+              value: /etc/authstep/oidc/client-secret
+            - name: AUTHSTEP_OIDC_GROUPS_CLAIM
+              value: {{ .Values.oidc.groupsClaim | quote }}
+            - name: AUTHSTEP_ISSUER_GROUP
+              value: {{ required "oidc.issuerGroup is required" .Values.oidc.issuerGroup | quote }}
+            - name: AUTHSTEP_ADMIN_GROUP
+              value: {{ required "oidc.adminGroup is required" .Values.oidc.adminGroup | quote }}
+            - name: AUTHSTEP_CA_URL
+              value: {{ .Values.ca.url | quote }}
+            - name: AUTHSTEP_CA_ROOT
+              value: /etc/authstep/ca/root_ca.crt
+            - name: AUTHSTEP_CA_PROVISIONER
+              value: {{ .Values.ca.provisioner | quote }}
+            - name: AUTHSTEP_CA_PROVISIONER_KEY
+              value: /etc/authstep/provisioner/key.jwe
+            - name: AUTHSTEP_CA_PROVISIONER_PASSWORD_FILE
+              value: /etc/authstep/provisioner/password
+            - name: AUTHSTEP_INTERNAL_TLS_CERT
+              value: /etc/authstep/internal-tls/tls.crt
+            - name: AUTHSTEP_INTERNAL_TLS_KEY
+              value: /etc/authstep/internal-tls/tls.key
+            - name: AUTHSTEP_SCEP_URL
+              value: {{ .Values.scep.url | quote }}
+            - name: AUTHSTEP_PROFILE_SIGNING_CERT
+              value: /etc/authstep/profile-signing/tls.crt
+            - name: AUTHSTEP_PROFILE_SIGNING_KEY
+              value: /etc/authstep/profile-signing/tls.key
+            {{- with .Values.trustedProxies }}
+            - name: AUTHSTEP_TRUSTED_PROXIES
+              value: {{ join "," . | quote }}
+            {{- end }}
+            {{- if .Values.smtp.addr }}
+            - name: AUTHSTEP_SMTP_ADDR
+              value: {{ .Values.smtp.addr | quote }}
+            - name: AUTHSTEP_SMTP_FROM
+              value: {{ required "smtp.from is required with smtp.addr" .Values.smtp.from | quote }}
+            {{- with .Values.smtp.username }}
+            - name: AUTHSTEP_SMTP_USERNAME
+              value: {{ . | quote }}
+            - name: AUTHSTEP_SMTP_PASSWORD_FILE
+              value: /etc/authstep/smtp/password
+            {{- end }}
+            {{- with .Values.smtp.adminEmail }}
+            - name: AUTHSTEP_ADMIN_EMAIL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: oidc
+              mountPath: /etc/authstep/oidc
+              readOnly: true
+            - name: ca-root
+              mountPath: /etc/authstep/ca
+              readOnly: true
+            - name: provisioner
+              mountPath: /etc/authstep/provisioner
+              readOnly: true
+            - name: internal-tls
+              mountPath: /etc/authstep/internal-tls
+              readOnly: true
+            - name: profile-signing
+              mountPath: /etc/authstep/profile-signing
+              readOnly: true
+            {{- if and .Values.smtp.addr .Values.smtp.username }}
+            - name: smtp
+              mountPath: /etc/authstep/smtp
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "authstep.fullname" . }}-data
+        - name: oidc
+          secret:
+            secretName: {{ required "oidc.clientSecret.existingSecret is required" .Values.oidc.clientSecret.existingSecret }}
+            items:
+              - key: {{ .Values.oidc.clientSecret.key }}
+                path: client-secret
+        - name: ca-root
+          configMap:
+            name: {{ required "ca.root.configMap is required" .Values.ca.root.configMap }}
+            items:
+              - key: {{ .Values.ca.root.key }}
+                path: root_ca.crt
+        - name: provisioner
+          secret:
+            secretName: {{ required "ca.provisionerKey.existingSecret is required" .Values.ca.provisionerKey.existingSecret }}
+            items:
+              - key: {{ .Values.ca.provisionerKey.keyKey }}
+                path: key.jwe
+              - key: {{ .Values.ca.provisionerKey.passwordKey }}
+                path: password
+        # Secret volumes update in place when cert-manager renews; AuthStep reloads changed files.
+        - name: internal-tls
+          secret:
+            secretName: {{ required "internalTLS.existingSecret is required" .Values.internalTLS.existingSecret }}
+        - name: profile-signing
+          secret:
+            secretName: {{ required "profileSigning.existingSecret is required" .Values.profileSigning.existingSecret }}
+        {{- if and .Values.smtp.addr .Values.smtp.username }}
+        - name: smtp
+          secret:
+            secretName: {{ required "smtp.password.existingSecret is required with smtp.username" .Values.smtp.password.existingSecret }}
+            items:
+              - key: {{ .Values.smtp.password.key }}
+                path: password
+        {{- end }}
+        {{- if .Values.litestream.enabled }}
+        - name: litestream-config
+          configMap:
+            name: {{ include "authstep.fullname" . }}-litestream
+        - name: litestream-tmp
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

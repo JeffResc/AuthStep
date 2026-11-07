@@ -1,0 +1,40 @@
+{{define "content"}}
+<section class="card narrow" id="newcert" data-csrf="{{.CSRF}}">
+  <h1>New certificate</h1>
+
+  <noscript><p class="error">This page needs JavaScript to create the key on your device.</p></noscript>
+
+  <form id="request-form">
+    <label for="device-name">Device name</label>
+    <input id="device-name" name="deviceName" maxlength="64" required placeholder="e.g. Work laptop" autocomplete="off">
+    <p class="muted small">Your private key is created in this browser and never leaves it.</p>
+    <button type="submit" class="button">Create certificate</button>
+  </form>
+
+  <p id="progress" class="muted" hidden></p>
+  <p id="error" class="error" role="alert" hidden></p>
+
+  <div id="result" hidden>
+    <p>Your certificate is ready. Download it now: the private key is not stored anywhere else.</p>
+
+    <label for="passphrase">Passphrase for the .p12 file</label>
+    <div class="copy-row">
+      <input id="passphrase" readonly>
+      <button type="button" id="copy-passphrase" class="button secondary">Copy</button>
+    </div>
+    <p class="muted small">You need this passphrase to install the .p12 file. It is shown only once.</p>
+
+    <div class="downloads">
+      <a id="download-p12" class="button">Download .p12</a>
+      <a id="download-pem" class="button secondary">Certificate .pem</a>
+      <a id="download-key" class="button secondary">Private key .pem</a>
+    </div>
+    <p class="muted small">The .pem private key is not encrypted. Use the .p12 file unless your software needs PEM.</p>
+
+    <h2>Install it</h2>
+    {{template "guides" .}}
+    <a href="/">Back to your certificates</a>
+  </div>
+</section>
+<script type="module" src="/static/js/newcert.js"></script>
+{{end}}

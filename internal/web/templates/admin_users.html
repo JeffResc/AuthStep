@@ -1,0 +1,32 @@
+{{define "content"}}
+{{template "adminnav" "users"}}
+<section class="card">
+  <h1>Users</h1>
+  <form method="post" action="/admin/limit" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <label for="default-limit">Default certificate limit</label>
+    <input id="default-limit" name="limit" type="number" min="0" max="1000" value="{{.View.DefaultLimit}}" required>
+    <button type="submit" class="button secondary">Save</button>
+  </form>
+
+  {{if .View.Users}}
+  <table class="certs">
+    <thead>
+      <tr><th>User</th><th>Active certificates</th><th>Limit</th><th>Last sign-in</th></tr>
+    </thead>
+    <tbody>
+      {{range .View.Users}}
+      <tr>
+        <td><a href="/admin/users/{{pathEscape .Sub}}">{{.Email}}</a>{{if .IsAdmin}} <span class="badge">Admin</span>{{end}}</td>
+        <td>{{.ActiveCerts}}</td>
+        <td>{{.Limit}}{{if .LimitOverride}} <span class="muted small">(custom)</span>{{end}}</td>
+        <td>{{.LastLoginAt.UTC.Format "2 Jan 2006 15:04"}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">Nobody has signed in yet.</p>
+  {{end}}
+</section>
+{{end}}

@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "authstep-dev",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "AUTHSTEP_BASE_URL=http://localhost:8080",
+        "AUTHSTEP_DB_PATH=dev/authstep.db",
+        "AUTHSTEP_OIDC_ISSUER=http://localhost:5556/dex",
+        "AUTHSTEP_OIDC_CLIENT_ID=authstep",
+        "AUTHSTEP_OIDC_CLIENT_SECRET=authstep-dev-secret",
+        "AUTHSTEP_ISSUER_GROUP=authors",
+        "AUTHSTEP_ADMIN_GROUP=authors",
+        "AUTHSTEP_CA_URL=https://localhost:9000",
+        "AUTHSTEP_CA_ROOT=dev/step/certs/root_ca.crt",
+        "AUTHSTEP_CA_PROVISIONER=authstep-jwk",
+        "AUTHSTEP_CA_PROVISIONER_KEY=dev/step/authstep-jwk.jwe",
+        "AUTHSTEP_CA_PROVISIONER_PASSWORD_FILE=dev/step/password.txt",
+        "AUTHSTEP_INTERNAL_TLS_CERT=dev/step/authstep-internal.crt",
+        "AUTHSTEP_INTERNAL_TLS_KEY=dev/step/authstep-internal.key",
+        "AUTHSTEP_SCEP_URL=https://localhost:9000/scep/authstep-scep",
+        "AUTHSTEP_PROFILE_SIGNING_CERT=dev/step/profile-signer.crt",
+        "AUTHSTEP_PROFILE_SIGNING_KEY=dev/step/profile-signer.key",
+        "AUTHSTEP_SMTP_ADDR=localhost:1025",
+        "AUTHSTEP_SMTP_FROM=AuthStep <authstep@example.com>",
+        "AUTHSTEP_ADMIN_EMAIL=security@example.com",
+        "go",
+        "run",
+        "./cmd/authstep"
+      ],
+      "port": 8080
+    }
+  ]
+}

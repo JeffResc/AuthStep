@@ -1,0 +1,9 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>Set up another device</h1>
+  <p>Scan this code with the phone, tablet or computer that should get a certificate. Sign in there and create the certificate on that device, so its private key never leaves it.</p>
+  <div class="qr-wrap">{{.View.QR}}</div>
+  <p class="center"><code>{{.View.URL}}</code></p>
+  <p><a href="/">Back to your certificates</a></p>
+</section>
+{{end}}

@@ -1,0 +1,39 @@
+{{define "content"}}
+{{with .View}}
+<section class="banner" role="status">
+  <strong>Certificates expiring soon</strong>
+  <ul>
+    {{range .}}<li>{{.DeviceName}} expires on {{.Expires}}. Create a new certificate for this device before then.</li>{{end}}
+  </ul>
+</section>
+{{end}}
+<section class="card">
+  <div class="card-head">
+    <h1>Your certificates</h1>
+    <div class="form-actions">
+      <a class="button secondary" href="/certs/apple">Add Apple device</a>
+      <a class="button" href="/certs/new">New certificate</a>
+    </div>
+  </div>
+  {{if .Certificates}}
+  <table class="certs">
+    <thead>
+      <tr><th>Device</th><th>Status</th><th>Expires</th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .Certificates}}
+      <tr>
+        <td>{{.DeviceName}}</td>
+        <td><span class="status status-{{.Status}}">{{.Status}}</span></td>
+        <td>{{.Expires}}</td>
+        <td class="actions">{{if .Revocable}}<a href="/certs/{{pathEscape .ID}}/revoke">Revoke</a>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">You have no certificates yet.</p>
+  {{end}}
+  <p class="links"><a href="/devices/add">Set up another device</a> · <a href="/help/install">How to install a certificate</a></p>
+</section>
+{{end}}

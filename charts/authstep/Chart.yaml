@@ -1,0 +1,6 @@
+apiVersion: v2
+name: authstep
+description: Self-service client certificates for user devices, issued through step-ca.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

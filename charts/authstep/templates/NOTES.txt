@@ -1,0 +1,19 @@
+AuthStep is starting at {{ .Values.baseURL }}
+
+Configure step-ca's SCEP provisioner webhooks with these URLs:
+  SCEPCHALLENGE: https://{{ include "authstep.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.internalPort }}/scep/challenge
+  NOTIFYING:     https://{{ include "authstep.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.internalPort }}/scep/notify
+
+The certificate in Secret "{{ .Values.internalTLS.existingSecret }}" must include the intermediate,
+chain to the step-ca root, and be valid for:
+  {{ include "authstep.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+
+step-ca's own TLS certificate must be valid for the host in ca.url ({{ .Values.ca.url }}).
+{{- if not .Values.smtp.addr }}
+
+smtp.addr is empty: AuthStep sends no email (audit notices, expiry reminders).
+{{- end }}
+{{- if not .Values.litestream.enabled }}
+
+litestream.enabled is false: the SQLite database on the volume is not backed up.
+{{- end }}

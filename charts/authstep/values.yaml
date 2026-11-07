@@ -1,0 +1,138 @@
+# -- Container image.
+image:
+  repository: ghcr.io/jeffresc/authstep
+  # -- Defaults to the chart appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# -- Public URL users open, without a trailing slash. Must be https (http only for localhost and *.localhost).
+baseURL: https://authstep.example.com
+
+oidc:
+  # -- OIDC issuer URL. AuthStep must reach it at startup.
+  issuer: ""
+  clientID: authstep
+  # -- Secret holding the OIDC client secret.
+  clientSecret:
+    existingSecret: ""
+    key: client-secret
+  # -- ID token claim that lists the user's groups.
+  groupsClaim: groups
+  # -- Group required to use AuthStep.
+  issuerGroup: ""
+  # -- Group that grants admin rights. Admins must also be in issuerGroup.
+  adminGroup: ""
+
+ca:
+  # -- step-ca URL. Its host must be in step-ca's dnsNames: AuthStep builds token audiences from it and
+  # accepts webhook calls only from a client certificate valid for this host.
+  url: https://step-certificates.step.svc.cluster.local
+  # -- ConfigMap holding the root CA certificate.
+  root:
+    configMap: ""
+    key: root_ca.crt
+  # -- JWK provisioner name in ca.json.
+  provisioner: authstep-jwk
+  # -- Secret with the provisioner's encryptedKey (JWE from ca.json) and its password.
+  provisionerKey:
+    existingSecret: ""
+    keyKey: authstep-jwk.jwe
+    passwordKey: password
+
+scep:
+  # -- step-ca SCEP endpoint that Apple devices enrol against. Devices must trust its TLS certificate,
+  # so publish it through a publicly trusted Ingress.
+  url: https://ca.example.com/scep/authstep-scep
+
+# -- kubernetes.io/tls Secret for the webhook listener (port 9443). tls.crt must include the
+# intermediate and name the in-cluster service (see NOTES), and chain to the step-ca root.
+internalTLS:
+  existingSecret: ""
+
+# -- kubernetes.io/tls Secret used to sign .mobileconfig profiles. Use AuthStep's publicly trusted
+# Ingress certificate so devices show profiles as verified.
+profileSigning:
+  existingSecret: ""
+
+smtp:
+  # -- host:port. Empty disables all email. Port 465 uses implicit TLS; others need STARTTLS.
+  addr: ""
+  from: ""
+  username: ""
+  password:
+    existingSecret: ""
+    key: password
+  # -- Address that receives every audit event. Optional.
+  adminEmail: ""
+
+# -- CIDRs of reverse proxies whose X-Forwarded-For is trusted for the audit log client IP,
+# e.g. the ingress controller pod network.
+trustedProxies: []
+
+persistence:
+  size: 1Gi
+  storageClass: ""
+
+litestream:
+  # -- Continuously back up the SQLite database and restore it into an empty volume at start.
+  enabled: false
+  image:
+    repository: litestream/litestream
+    tag: 0.5.17
+    pullPolicy: IfNotPresent
+  # -- Replica URL, e.g. s3://bucket/authstep.
+  url: ""
+  # -- S3 endpoint for non-AWS storage. Empty uses AWS.
+  endpoint: ""
+  region: ""
+  forcePathStyle: false
+  # -- Secret with LITESTREAM_ACCESS_KEY_ID and LITESTREAM_SECRET_ACCESS_KEY.
+  existingSecret: ""
+  resources: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  internalPort: 9443
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: authstep.example.com
+  tls:
+    # -- TLS Secret for the Ingress. Usually also profileSigning.existingSecret.
+    secretName: ""
+
+networkPolicy:
+  # -- Restrict the webhook port to step-ca pods. The public port stays open to everything.
+  enabled: true
+  stepCA:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: step
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/name: step-certificates
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]

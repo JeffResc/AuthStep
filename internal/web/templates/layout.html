@@ -1,0 +1,35 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">AuthStep</a>
+    {{with .User}}
+    <div class="account">
+      {{if .IsAdmin}}<a href="/admin/users">Admin</a>{{end}}
+      <span class="who">{{.Email}}</span>
+      <form method="post" action="/auth/logout">
+        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        <button type="submit" class="link">Sign out</button>
+      </form>
+    </div>
+    {{end}}
+  </header>
+  <main>
+    {{block "content" .}}{{end}}
+  </main>
+</body>
+</html>
+{{end}}
+
+{{define "adminnav"}}
+<nav class="subnav">
+  <a href="/admin/users"{{if eq . "users"}} aria-current="page"{{end}}>Users</a>
+  <a href="/admin/audit"{{if eq . "audit"}} aria-current="page"{{end}}>Audit log</a>
+</nav>
+{{end}}

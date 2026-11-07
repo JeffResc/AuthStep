@@ -1,0 +1,23 @@
+{{- if .Values.litestream.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "authstep.fullname" . }}-litestream
+  labels:
+    {{- include "authstep.labels" . | nindent 4 }}
+data:
+  litestream.yml: |
+    dbs:
+      - path: {{ include "authstep.dbPath" . }}
+        replica:
+          url: {{ required "litestream.url is required" .Values.litestream.url | quote }}
+          {{- with .Values.litestream.endpoint }}
+          endpoint: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.litestream.region }}
+          region: {{ . | quote }}
+          {{- end }}
+          {{- if .Values.litestream.forcePathStyle }}
+          force-path-style: true
+          {{- end }}
+{{- end }}

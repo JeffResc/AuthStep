@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "authstep.fullname" . }}
+  labels:
+    {{- include "authstep.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "authstep.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+    - name: webhooks
+      port: {{ .Values.service.internalPort }}
+      targetPort: webhooks

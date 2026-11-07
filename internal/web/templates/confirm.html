@@ -1,0 +1,21 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>{{.View.Heading}}</h1>
+  <p>{{.View.Body}}</p>
+  <form method="post" action="{{.View.Action}}">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    {{with .View.Reasons}}
+    <fieldset>
+      <legend>Reason</legend>
+      {{range $i, $r := .}}
+      <label class="choice"><input type="radio" name="reason" value="{{$r.Name}}"{{if eq $i 0}} checked{{end}}> {{$r.Label}}</label>
+      {{end}}
+    </fieldset>
+    {{end}}
+    <div class="form-actions">
+      <button type="submit" class="button danger">{{.View.Button}}</button>
+      <a class="button secondary" href="{{.View.Cancel}}">Cancel</a>
+    </div>
+  </form>
+</section>
+{{end}}
