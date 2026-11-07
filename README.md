@@ -4,6 +4,7 @@ Self-service client certificates for your users' devices. People sign in with yo
 
 - **Browsers** (Windows, Linux, Android, Firefox anywhere): the key is created in the browser and never leaves it. Users download a `.p12` (AES-256) or PEM files.
 - **iPhone, iPad and Mac**: a signed configuration profile enrols the device over SCEP; the key is created on the device and cannot be exported.
+- **Apple TV**: the same profile, fetched once through a short link that the user types on the TV.
 - Users revoke their own certificates; admins revoke any, or all of a user's (offboarding). step-ca publishes the CRL.
 - Per-user limits, an audit log, email notices and expiry reminders, install guides for each platform, and a QR code to set up another device.
 

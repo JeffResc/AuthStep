@@ -31,6 +31,8 @@ type certView struct {
 	// ContinueURL resumes an Apple enrolment whose profile was not downloaded yet.
 	ContinueURL string
 	Revocable   bool
+	// Cancelable is an Apple enrolment that has not enrolled yet.
+	Cancelable bool
 }
 
 func newCertView(c store.Certificate, now time.Time) certView {
@@ -51,6 +53,7 @@ func newCertView(c store.Certificate, now time.Time) certView {
 		v.Status, v.StatusClass = "Waiting for download", "waiting"
 		v.Note = "Download the profile on the device."
 		v.ContinueURL = "/certs/" + url.PathEscape(c.ID) + "/apple"
+		v.Cancelable = true
 	}
 	if !c.NotAfter.IsZero() {
 		v.Expires = c.NotAfter.UTC().Format("2 Jan 2006")

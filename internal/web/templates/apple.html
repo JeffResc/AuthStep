@@ -8,18 +8,54 @@
   <div class="qr-wrap">{{$v.QR}}</div>
   <p class="center"><code>{{$v.URL}}</code></p>
   <p class="muted small">Already on the Apple device? <a href="/certs/apple?here=1">Continue on this device</a></p>
+  <p class="muted small">Adding an Apple TV? <a href="/certs/apple?tv=1">Set it up from here</a></p>
   <p><a href="/">Back to your certificates</a></p>
 
   {{else if eq $v.Mode "form"}}
+  {{if $v.TV}}
+  <h1>Add Apple TV</h1>
+  <p>Set up the Apple TV from this device. AuthStep gives you a short link to type on the Apple TV, which then creates its own key while it installs a profile.</p>
+  {{else}}
   <h1>Add Apple device</h1>
   <p>Use this page on the iPhone, iPad or Mac that should get the certificate. It creates its own key while it installs a profile; the key cannot be exported.</p>
+  {{end}}
   <form method="post" action="/certs/apple">
     <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+    {{if $v.TV}}<input type="hidden" name="tv" value="1">{{end}}
     <label for="device-name">Device name</label>
-    <input id="device-name" name="deviceName" maxlength="64" required placeholder="e.g. Work iPhone" autocomplete="off">
+    <input id="device-name" name="deviceName" maxlength="64" required placeholder="e.g. {{if $v.TV}}Living Room Apple TV{{else}}{{$.DeviceExample}}{{end}}" autocomplete="off">
     <div class="form-actions">
       <button type="submit" class="button">Continue</button>
       <a class="button secondary" href="/">Cancel</a>
+    </div>
+  </form>
+  {{if not $v.TV}}<p class="muted small">Adding an Apple TV? <a href="/certs/apple?tv=1">Set it up from here</a></p>{{end}}
+
+  {{else if eq $v.Mode "tvlink"}}
+  <h1>Type this on the Apple TV</h1>
+  <p>The link for "{{$v.DeviceName}}" works once, within {{$v.InstallBy}}. It is shown only on this page.</p>
+  <p class="center"><code class="device-link">{{$v.URL}}</code></p>
+  <ol class="steps">
+    <li>On the Apple TV, open <strong>Settings → General → Privacy &amp; Security</strong>.</li>
+    <li>Highlight <strong>Share Apple TV Analytics</strong> (do not select it) and press <strong>Play/Pause</strong> on the remote. <strong>Add Profile</strong> appears.</li>
+    <li>Select <strong>Add Profile</strong>, type the address above and install the profile when the Apple TV asks.</li>
+    <li>The Apple TV then requests its certificate. Your certificate list shows it as Issuing, then Active.</li>
+  </ol>
+  <p class="muted small">The code is not case-sensitive and the hyphen is optional. <a href="/">Back to your certificates</a></p>
+
+  {{else if eq $v.Mode "linked"}}
+  <h1>Apple TV link created</h1>
+  <p>A link for "{{$v.DeviceName}}" was already shown and works for {{$v.InstallBy}}. It cannot be shown again. If you no longer have it, cancel this request on your certificate list and start again.</p>
+  <p><a href="/">Back to your certificates</a></p>
+
+  {{else if $v.TV}}
+  <h1>Create the Apple TV link</h1>
+  <p>AuthStep creates a one-time link for "{{$v.DeviceName}}". Type it on the Apple TV within 10 minutes.</p>
+  <form method="post" action="/certs/{{pathEscape $v.ID}}/tv">
+    <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+    <div class="form-actions">
+      <button type="submit" class="button">Create link</button>
+      <a class="button secondary" href="/">Back</a>
     </div>
   </form>
 
@@ -37,7 +73,7 @@
     <li>The device then requests its certificate. Your certificate list shows it as Issuing, then Active.</li>
   </ol>
   <p class="muted small">On iPhone, if Stolen Device Protection is on and you are not in a familiar location, turn it off before you install the profile and on again afterwards.</p>
-  <p class="muted small">The download works once. <a href="/">Back to your certificates</a></p>
+  <p class="muted small">The download works once. {{if eq $v.Mode "download"}}Installing on an Apple TV? <a href="/certs/{{pathEscape $v.ID}}/apple?tv=1">Use a link instead</a>. {{end}}<a href="/">Back to your certificates</a></p>
   {{end}}
 </section>
 {{end}}

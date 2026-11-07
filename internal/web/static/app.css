@@ -251,3 +251,9 @@ pre code { word-break: normal; }
 .qr { width: min(260px, 70vw); height: auto; }
 .center { text-align: center; }
 .links { margin-top: 1rem; }
+
+.actions { white-space: nowrap; }
+.actions > * + * { margin-left: 0.75rem; }
+form.inline-action { display: inline; }
+button.link.danger { color: var(--danger); text-decoration: underline; }
+code.device-link { font-size: 1.25rem; }

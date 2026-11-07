@@ -324,3 +324,201 @@ func TestRequireCA(t *testing.T) {
 		}
 	}
 }
+
+func TestCancelBeforeDownload(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	res, err := e.certs.Reserve(ctx, e.user, "iPhone", "scep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.st.CancelSCEPEnrolment(ctx, e.user.Sub, res.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.st.CertificateByID(ctx, res.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("record after cancel: err = %v, want ErrNotFound", err)
+	}
+	if _, err := e.svc.Profile(ctx, e.user, res.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("profile after cancel: err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestCancelledProfileCannotEnrol(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	id, challenge := e.enrol(t)
+	if _, err := e.st.CancelSCEPEnrolment(ctx, e.user.Sub, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); resp.Allow {
+		t.Fatal("a cancelled profile's challenge was allowed")
+	}
+	if _, err := e.st.CancelSCEPEnrolment(ctx, e.user.Sub, id); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("second cancel: err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestCancelAfterEnrolmentStartedIsRefused(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	id, challenge := e.enrol(t)
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); !resp.Allow {
+		t.Fatal("challenge denied")
+	}
+	if _, err := e.st.CancelSCEPEnrolment(ctx, e.user.Sub, id); !errors.Is(err, store.ErrNotPending) {
+		t.Fatalf("cancel while issuing: err = %v, want ErrNotPending", err)
+	}
+	if c, _ := e.st.CertificateByID(ctx, id); c.Status != "issuing" {
+		t.Fatalf("status = %q, want issuing (untouched)", c.Status)
+	}
+}
+
+func TestCancelOnlyOwnPendingAppleRequests(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	mine, err := e.certs.Reserve(ctx, e.user, "iPhone", "scep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	browser, err := e.certs.Reserve(ctx, e.user, "laptop", "browser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.st.CancelSCEPEnrolment(ctx, "sub-mallory", mine.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("other user: err = %v, want ErrNotFound", err)
+	}
+	if _, err := e.st.CancelSCEPEnrolment(ctx, e.user.Sub, browser.ID); !errors.Is(err, store.ErrNotPending) {
+		t.Fatalf("browser reservation: err = %v, want ErrNotPending", err)
+	}
+}
+
+// linkChallenge returns the challenge in a profile served by a device link.
+func linkChallenge(t *testing.T, signed []byte, email string) string {
+	t.Helper()
+	p7, err := pkcs7.Parse(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p7.Verify(); err != nil {
+		t.Fatalf("profile signature: %v", err)
+	}
+	var doc profileDoc
+	if _, err := plist.Unmarshal(p7.Content, &doc); err != nil {
+		t.Fatal(err)
+	}
+	c := doc.PayloadContent[0].PayloadContent
+	if c.SubjectAltName["rfc822Name"] != email {
+		t.Fatalf("SubjectAltName = %v", c.SubjectAltName)
+	}
+	return c.Challenge
+}
+
+func TestDeviceLinkServesProfileOnce(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	res, err := e.certs.Reserve(ctx, e.user, "Living Room Apple TV", "scep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, expires, err := e.svc.CreateLink(ctx, e.user, res.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(code) != 9 || code[4] != '-' || !expires.Equal(e.clock.Add(LinkTTL)) {
+		t.Fatalf("code %q expires %v", code, expires)
+	}
+	if exp, ok, _ := e.st.DeviceLinkExpiry(ctx, res.ID); !ok || exp.Unix() != expires.Unix() {
+		t.Fatalf("DeviceLinkExpiry = %v %v", exp, ok)
+	}
+	// Typed in lower case, without the hyphen.
+	signed, err := e.svc.ProfileByLink(ctx, strings.ToLower(strings.ReplaceAll(code, "-", "")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	challenge := linkChallenge(t, signed, e.user.Email)
+	if _, ok, _ := e.st.DeviceLinkExpiry(ctx, res.ID); ok {
+		t.Fatal("link still listed as unused")
+	}
+	if _, err := e.svc.ProfileByLink(ctx, code); !errors.Is(err, store.ErrLinkUsed) {
+		t.Fatalf("second use: err = %v, want ErrLinkUsed", err)
+	}
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); !resp.Allow {
+		t.Fatal("challenge from the linked profile was denied")
+	}
+}
+
+func TestDeviceLinkRules(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	res, err := e.certs.Reserve(ctx, e.user, "Apple TV", "scep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, _, err := e.svc.CreateLink(ctx, e.user, res.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.CreateLink(ctx, e.user, res.ID); !errors.Is(err, store.ErrLinkExists) {
+		t.Fatalf("second link: err = %v, want ErrLinkExists", err)
+	}
+	for _, bad := range []string{"", "ABCD-EFG", "ABCD-EFGHJ", "ABCD-EFG!", "UUUU-UUUU"} {
+		if _, err := e.svc.ProfileByLink(ctx, bad); !errors.Is(err, store.ErrNotFound) {
+			t.Errorf("code %q: err = %v, want ErrNotFound", bad, err)
+		}
+	}
+	e.clock = e.clock.Add(LinkTTL)
+	if _, err := e.svc.ProfileByLink(ctx, code); !errors.Is(err, store.ErrLinkExpired) {
+		t.Fatalf("expired: err = %v, want ErrLinkExpired", err)
+	}
+
+	// A link is not offered once the profile was downloaded directly.
+	id, _ := e.enrol(t)
+	if _, _, err := e.svc.CreateLink(ctx, e.user, id); !errors.Is(err, store.ErrChallengeExists) {
+		t.Fatalf("after download: err = %v, want ErrChallengeExists", err)
+	}
+
+	// The link never outlives the reservation.
+	late, err := e.certs.Reserve(ctx, e.user, "Bedroom Apple TV", "scep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec, err := e.st.CertificateByID(ctx, late.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.clock = rec.CreatedAt.Add(certs.PendingTTL - time.Minute)
+	if _, exp, err := e.svc.CreateLink(ctx, e.user, late.ID); err != nil || !exp.Equal(rec.CreatedAt.Add(certs.PendingTTL)) {
+		t.Fatalf("late link: expires %v, err %v", exp, err)
+	}
+}
+
+func TestCancelledDeviceLinkIsDead(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	res, err := e.certs.Reserve(ctx, e.user, "Apple TV", "scep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, _, err := e.svc.CreateLink(ctx, e.user, res.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.st.CancelSCEPEnrolment(ctx, e.user.Sub, res.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.ProfileByLink(ctx, code); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("after cancel: err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestNormalizeCode(t *testing.T) {
+	for in, want := range map[string]string{
+		"KQ7M-2XRP": "KQ7M2XRP",
+		"kq7m2xrp":  "KQ7M2XRP",
+		"OIL0-1111": "01101111",
+	} {
+		if got, ok := normalizeCode(in); !ok || got != want {
+			t.Errorf("normalizeCode(%q) = %q %v, want %q", in, got, ok, want)
+		}
+	}
+}

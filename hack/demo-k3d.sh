@@ -6,6 +6,8 @@
 #   hack/demo-k3d.sh up            create the cluster and install everything
 #   hack/demo-k3d.sh up --public   the same, reachable from other devices (e.g. a
 #                                  phone) through Cloudflare quick tunnels
+#   hack/demo-k3d.sh reload        rebuild AuthStep from this checkout and roll it out,
+#                                  keeping everything else (and any tunnel URLs)
 #   hack/demo-k3d.sh down          delete the cluster
 #
 # Locally it serves:
@@ -26,6 +28,21 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 state="$root/.demo"
 
 kc() { kubectl --context "$ctx" "$@"; }
+
+# import_image loads a local image into the cluster. A fresh node can drop an
+# import while containerd starts, so it checks and retries.
+import_image() {
+  local image=$1
+  for _ in 1 2 3 4 5; do
+    k3d image import "$image" -c "$cluster" >/dev/null 2>&1 || true
+    if docker exec "k3d-$cluster-server-0" crictl images 2>/dev/null | grep -q "authstep .*${image#*:}"; then
+      return
+    fi
+    sleep 3
+  done
+  echo "could not import $image into the cluster" >&2
+  exit 1
+}
 
 # tunnel starts a Cloudflare quick tunnel to origin and prints its public URL.
 tunnel() {
@@ -65,16 +82,7 @@ up() {
   # 8081: the ingress (AuthStep, Dex, Mailpit). 9000: step-ca, for SCEP and the CRL.
   k3d cluster create "$cluster" --kubeconfig-switch-context=false --wait \
     -p "127.0.0.1:8081:80@loadbalancer" -p "127.0.0.1:9000:30900@server:0" >/dev/null
-  # A fresh node can drop an import while containerd starts, so check and retry.
-  for _ in 1 2 3 4 5; do
-    k3d image import authstep:demo -c "$cluster" >/dev/null 2>&1 || true
-    if docker exec "k3d-$cluster-server-0" crictl images 2>/dev/null | grep -q 'authstep .*demo'; then
-      break
-    fi
-    sleep 3
-  done
-  docker exec "k3d-$cluster-server-0" crictl images | grep -q 'authstep .*demo' ||
-    { echo "could not import authstep:demo into the cluster" >&2; exit 1; }
+  import_image authstep:demo
   kc create namespace "$ns" >/dev/null
 
   local authstep_url=http://authstep.localhost:8081 dex_url=http://dex.localhost:8081
@@ -249,8 +257,21 @@ AuthStep demo is running.
 EOF
 }
 
+# reload deploys the current checkout under a new tag: the node keeps the old
+# image under an existing tag, so reusing "demo" would not pick up changes.
+reload() {
+  local tag
+  tag="demo-$(date +%s)"
+  echo "==> Building authstep:$tag"
+  docker build -q --build-arg VERSION="$tag" -t "authstep:$tag" "$root" >/dev/null
+  import_image "authstep:$tag"
+  kc -n "$ns" set image deployment/authstep "authstep=authstep:$tag" >/dev/null
+  kc -n "$ns" rollout status deployment/authstep --timeout=180s
+}
+
 case "${1:-}" in
   up) up "${2:-}" ;;
+  reload) reload ;;
   down) down ;;
-  *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

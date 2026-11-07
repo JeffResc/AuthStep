@@ -15,11 +15,13 @@ import (
 )
 
 const (
-	Login           = "login"
-	LoginDenied     = "login_denied"
-	CertIssued      = "cert_issued"
-	CertRevoked     = "cert_revoked"
-	CertFailed      = "cert_failed"
+	Login       = "login"
+	LoginDenied = "login_denied"
+	CertIssued  = "cert_issued"
+	CertRevoked = "cert_revoked"
+	CertFailed  = "cert_failed"
+	// CertCancelled is an Apple enrolment cancelled before the device enrolled.
+	CertCancelled   = "cert_request_cancelled"
 	DefaultLimitSet = "limit_default_set"
 	UserLimitSet    = "limit_user_set"
 )

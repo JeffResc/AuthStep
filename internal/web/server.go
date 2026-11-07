@@ -81,6 +81,9 @@ func New(a *auth.Auth, c *certs.Service, sc *scep.Service, st *store.Store, rec 
 	mux.HandleFunc("POST /certs/apple", s.requirePage(s.appleReserve))
 	mux.HandleFunc("GET /certs/{id}/apple", s.requirePage(s.appleReady))
 	mux.HandleFunc("GET /certs/{id}/apple.mobileconfig", s.requirePage(s.appleProfile))
+	mux.HandleFunc("POST /certs/{id}/tv", s.requirePage(s.appleTVLink))
+	mux.HandleFunc("GET /tv/{code}", s.tvProfile)
+	mux.HandleFunc("POST /certs/{id}/cancel", s.requirePage(s.appleCancel))
 	mux.HandleFunc("GET /certs/{id}/revoke", s.requirePage(s.confirmRevoke))
 	mux.HandleFunc("POST /certs/{id}/revoke", s.requirePage(s.revoke))
 
@@ -118,12 +121,14 @@ type pageData struct {
 	Certificates []certView
 	// OS is the visitor's platform, for opening the matching install guide.
 	OS string
+	// DeviceExample is the example name in device name fields.
+	DeviceExample string
 	// View holds page-specific data.
 	View any
 }
 
 func newPageData(r *http.Request, title string) pageData {
-	d := pageData{Title: title, OS: detectOS(r.UserAgent())}
+	d := pageData{Title: title, OS: detectOS(r.UserAgent()), DeviceExample: deviceExample(r.UserAgent())}
 	if sess := auth.SessionFrom(r.Context()); sess != nil {
 		d.User = &sess.User
 		d.CSRF = sess.CSRFToken
@@ -158,6 +163,19 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 				}
 				v.Status, v.ContinueURL = "Waiting for device", ""
 				v.Note = "Install the downloaded profile on the device within " + minutesLeft(expires.Sub(now)) + "."
+			} else {
+				linkExpires, linked, err := s.store.DeviceLinkExpiry(r.Context(), c.ID)
+				if err != nil {
+					s.fail(w, r, err)
+					return
+				}
+				if linked {
+					if !now.Before(linkExpires) {
+						continue // the link can no longer be used
+					}
+					v.Status, v.ContinueURL = "Waiting for Apple TV", ""
+					v.Note = "Type the link on the Apple TV within " + minutesLeft(linkExpires.Sub(now)) + "."
+				}
 			}
 		}
 		d.Certificates = append(d.Certificates, v)

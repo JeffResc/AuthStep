@@ -96,6 +96,8 @@ The WebCrypto key must be `extractable` so it can be exported into the .p12. It 
    - **Notifications are best-effort**: step-ca ignores errors from the notify webhook. If AuthStep never receives one, the record stays `issuing`. Admins see it flagged and can delete it, and the user can try again. Without a serial, a cert issued this way cannot be revoked, so the notify handler must stay simple and fast.
    - macOS renews by sending a new request with the challenge. A single-use challenge blocks that renewal, which matches "no auto-renewal": the user enrolls again before expiry.
 
+**Apple TV (tvOS) variant.** An Apple TV cannot sign in, so the user reserves the record on another device and creates a one-time device link, `/tv/XXXX-XXXX`. The code has 8 Crockford base32 symbols (40 bits). It is stored as a SHA-256 hash and works once, for 10 minutes, but never past the 15-minute reservation. `GET /tv/{code}` needs no session: it marks the link used and serves the same signed profile, and from then on the flow is as above. The user types the link into the hidden tvOS **Add Profile** menu (Settings → General → Privacy & Security, Play/Pause on "Share Apple TV Analytics"). Apple's SCEP payload schema lists tvOS 9.0+. Apple does not document that menu, and it is not tested on a device.
+
 ## Data model (SQLite)
 
 - `users`: `sub` (PK), `email`, `name`, `is_admin` (from the latest login), `cert_limit_override` (NULL = use the global value), `last_login_at`
@@ -190,6 +192,7 @@ Other things the test showed:
 - iOS and macOS show the profile as "Verified" when it is signed with the Let's Encrypt cert.
 - Real iOS/macOS SCEP enrolment works with RSA 2048 against step-ca, including the RA selection.
 - Whether `KeyIsExtractable` has any effect on iOS.
+- Apple TV: the hidden Add Profile menu, SCEP enrolment on tvOS, and which apps use the certificate.
 
 ## Milestones (each with its check)
 

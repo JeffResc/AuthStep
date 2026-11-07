@@ -32,6 +32,12 @@
         <td class="actions">
           {{if .Revocable}}<a href="/certs/{{pathEscape .ID}}/revoke">Revoke</a>{{end}}
           {{with .ContinueURL}}<a class="continue" href="{{.}}">Continue</a>{{end}}
+          {{if .Cancelable}}
+          <form method="post" action="/certs/{{pathEscape .ID}}/cancel" class="inline-action">
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button type="submit" class="link danger">Cancel request</button>
+          </form>
+          {{end}}
         </td>
       </tr>
       {{end}}

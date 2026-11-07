@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/JeffResc/AuthStep/internal/audit"
@@ -48,6 +49,84 @@ func (s *Service) Profile(ctx context.Context, user store.User, certID string) (
 	if err != nil {
 		return nil, err
 	}
+	return s.profile(ctx, rec, user.Email)
+}
+
+// LinkTTL is how long a device link can be used.
+const LinkTTL = 10 * time.Minute
+
+// linkAlphabet is Crockford's base32: no I, L, O or U.
+const linkAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+// CreateLink creates the one device link for a pending SCEP record, for a
+// device that cannot sign in (Apple TV). It returns the code, formatted as
+// XXXX-XXXX, which is never shown again, and when it expires.
+func (s *Service) CreateLink(ctx context.Context, user store.User, certID string) (string, time.Time, error) {
+	rec, err := s.store.UserCertificate(ctx, user.Sub, certID)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	now := s.now()
+	if rec.Method != "scep" || rec.Status != "pending" {
+		return "", time.Time{}, ErrNotSCEP
+	}
+	if now.Sub(rec.CreatedAt) > certs.PendingTTL {
+		return "", time.Time{}, certs.ErrReservationExpired
+	}
+	// The profile must be fetched while the reservation is still open.
+	expires := now.Add(LinkTTL)
+	if end := rec.CreatedAt.Add(certs.PendingTTL); end.Before(expires) {
+		expires = end
+	}
+
+	raw := make([]byte, 5) // 40 bits, 8 symbols
+	if _, err := rand.Read(raw); err != nil {
+		return "", time.Time{}, err
+	}
+	bits := uint64(raw[0])<<32 | uint64(raw[1])<<24 | uint64(raw[2])<<16 | uint64(raw[3])<<8 | uint64(raw[4])
+	code := make([]byte, 8)
+	for i := range code {
+		code[7-i] = linkAlphabet[bits&31]
+		bits >>= 5
+	}
+	if err := s.store.CreateDeviceLink(ctx, certID, hashChallenge(string(code)), expires); err != nil {
+		return "", time.Time{}, err
+	}
+	return string(code[:4]) + "-" + string(code[4:]), expires, nil
+}
+
+// ProfileByLink uses a device link and returns the signed profile for its
+// record. The link works once.
+func (s *Service) ProfileByLink(ctx context.Context, code string) ([]byte, error) {
+	code, ok := normalizeCode(code)
+	if !ok {
+		return nil, store.ErrNotFound
+	}
+	e, err := s.store.UseDeviceLink(ctx, hashChallenge(code), s.now())
+	if err != nil {
+		return nil, err
+	}
+	s.log.Info("device link used", "id", e.ID, "sub", e.UserSub)
+	return s.profile(ctx, &e.Certificate, e.Email)
+}
+
+// normalizeCode accepts a code typed in any case, with or without the
+// hyphen, and with O, I or L for 0 and 1.
+func normalizeCode(code string) (string, bool) {
+	code = strings.NewReplacer("-", "", "O", "0", "I", "1", "L", "1").Replace(strings.ToUpper(code))
+	if len(code) != 8 {
+		return "", false
+	}
+	for _, c := range code {
+		if !strings.ContainsRune(linkAlphabet, c) {
+			return "", false
+		}
+	}
+	return code, true
+}
+
+func (s *Service) profile(ctx context.Context, rec *store.Certificate, email string) ([]byte, error) {
+	certID := rec.ID
 	now := s.now()
 	if rec.Method != "scep" || rec.Status != "pending" {
 		return nil, ErrNotSCEP
@@ -71,7 +150,7 @@ func (s *Service) Profile(ctx context.Context, user store.User, certID string) (
 	}
 	body, err := mobileconfig.Build(mobileconfig.SCEPProfile{
 		ProfileUUID: certID, PayloadUUID: payloadUUID, DeviceName: rec.DeviceName, URL: s.scepURL,
-		Challenge: challenge, Email: user.Email, DeviceURI: certs.DeviceURI(certID),
+		Challenge: challenge, Email: email, DeviceURI: certs.DeviceURI(certID),
 	})
 	if err != nil {
 		return nil, err

@@ -5,7 +5,7 @@
   <details{{if eq .OS "windows"}} open{{end}}>
     <summary>Windows</summary>
     <ol class="steps">
-      <li>Download the <strong>.p12</strong> file and open it. The Certificate Import Wizard starts.</li>
+      <li>Download the <strong>.pfx</strong> file (or the identical <strong>.p12</strong>) and open it. The Certificate Import Wizard starts.</li>
       <li>Leave <strong>Store Location</strong> as <strong>Current User</strong> and continue.</li>
       <li>Enter the passphrase that was shown when you created the certificate.</li>
       <li>Let Windows choose the certificate store, then finish.</li>
@@ -32,6 +32,16 @@
       <li>Within 8 minutes, open <strong>Settings</strong>, tap <strong>Profile Downloaded</strong>, then tap <strong>Install</strong> in the upper-right corner and follow the steps. iOS deletes a downloaded profile that is not installed in time.</li>
     </ol>
     <p>If Stolen Device Protection is on and you are not in a familiar location, turn it off before you install the profile and turn it on again afterwards. Installed profiles are listed in <strong>Settings → General → VPN &amp; Device Management</strong>.</p>
+  </details>
+
+  <details>
+    <summary>Apple TV</summary>
+    <ol class="steps">
+      <li>On a phone or computer, open <a href="/certs/apple?tv=1">Add Apple TV</a>, name the Apple TV and create the link.</li>
+      <li>On the Apple TV, open <strong>Settings → General → Privacy &amp; Security</strong>. Highlight <strong>Share Apple TV Analytics</strong> and press <strong>Play/Pause</strong> on the remote.</li>
+      <li>Select <strong>Add Profile</strong> and type the link within 10 minutes, then install the profile.</li>
+    </ol>
+    <p>The <strong>Add Profile</strong> menu is hidden and not documented by Apple, so it can change in a tvOS update. Apps on the Apple TV decide whether they use the certificate.</p>
   </details>
 
   <details{{if eq .OS "android"}} open{{end}}>

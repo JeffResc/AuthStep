@@ -28,6 +28,23 @@ func detectOS(ua string) string {
 	return ""
 }
 
+// deviceExample is the example device name shown in the name fields,
+// matched to the visitor's device.
+func deviceExample(ua string) string {
+	switch detectOS(ua) {
+	case "ios":
+		if strings.Contains(strings.ToLower(ua), "ipad") {
+			return "Personal iPad"
+		}
+		return "Personal iPhone"
+	case "macos":
+		return "Personal MacBook"
+	case "android":
+		return "Personal Phone"
+	}
+	return "Personal Computer"
+}
+
 func (s *Server) installHelp(w http.ResponseWriter, r *http.Request) {
 	s.render(w, http.StatusOK, "install", newPageData(r, "Install a certificate"))
 }

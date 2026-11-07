@@ -30,6 +30,8 @@ form.addEventListener("submit", async (event) => {
 
     const name = fileName(deviceName);
     link("download-p12", `${name}.p12`, p12, "application/x-pkcs12");
+    // The same PKCS#12 file under the extension Windows associates with it.
+    link("download-pfx", `${name}.pfx`, p12, "application/x-pkcs12");
     link("download-pem", `${name}.pem`, certs.map((c) => pem("CERTIFICATE", c)).join(""), "application/x-pem-file");
     link("download-key", `${name}.key.pem`, pem("PRIVATE KEY", pkcs8), "application/x-pem-file");
     document.getElementById("passphrase").value = passphrase;

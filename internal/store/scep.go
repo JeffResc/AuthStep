@@ -144,3 +144,33 @@ func scanEnrolment(row interface{ Scan(...any) error }) (*Enrolment, error) {
 	e.CreatedAt = time.Unix(created, 0)
 	return &e, nil
 }
+
+// CancelSCEPEnrolment deletes userSub's pending Apple enrolment id, its
+// device link and its challenge, so a downloaded profile can no longer enrol.
+// Once the device has used the challenge the record is issuing, and this returns ErrNotPending:
+// the certificate must then be revoked when it is active.
+func (s *Store) CancelSCEPEnrolment(ctx context.Context, userSub, id string) (*Certificate, error) {
+	var c *Certificate
+	err := s.inTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		c, err = scanCertificate(tx.QueryRowContext(ctx, `SELECT `+certColumns+` FROM certificates WHERE id = ? AND user_sub = ?`, id, userSub))
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if c.Method != "scep" || c.Status != "pending" {
+			return ErrNotPending
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM device_links WHERE cert_id = ?`, id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM scep_challenges WHERE cert_id = ?`, id); err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `DELETE FROM certificates WHERE id = ? AND status = 'pending'`, id)
+		return err
+	})
+	return c, err
+}
