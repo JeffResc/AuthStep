@@ -82,7 +82,7 @@ litestream:
   enabled: false
   image:
     repository: litestream/litestream
-    tag: 0.5.17
+    tag: 0.5.18
     pullPolicy: IfNotPresent
   # -- Replica URL, e.g. s3://bucket/authstep.
   url: ""
