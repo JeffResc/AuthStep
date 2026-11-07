@@ -3,6 +3,7 @@ package web
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDetectOS(t *testing.T) {
@@ -28,5 +29,18 @@ func TestQRSVG(t *testing.T) {
 	s := string(svg)
 	if !strings.HasPrefix(s, "<svg") || !strings.Contains(s, `fill="#fff"`) || strings.Count(s, "h1v1h-1z") < 100 {
 		t.Fatalf("unexpected SVG: %.200s", s)
+	}
+}
+
+func TestMinutesLeft(t *testing.T) {
+	for d, want := range map[time.Duration]string{
+		30 * time.Second:                "1 minute",
+		time.Minute:                     "1 minute",
+		time.Minute + time.Second:       "2 minutes",
+		14*time.Minute + 59*time.Second: "15 minutes",
+	} {
+		if got := minutesLeft(d); got != want {
+			t.Errorf("minutesLeft(%v) = %q, want %q", d, got, want)
+		}
 	}
 }

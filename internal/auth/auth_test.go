@@ -415,3 +415,44 @@ func (e *env) wantAudit(t *testing.T, action string) {
 		t.Fatalf("audit entries = %+v, want one %q by user-1 from 127.0.0.1", entries, action)
 	}
 }
+
+func TestLocalPath(t *testing.T) {
+	for p, want := range map[string]bool{
+		"/":                     true,
+		"/certs/apple":          true,
+		"/certs/apple?here=1":   true,
+		"":                      false,
+		"certs/apple":           false,
+		"//evil.example/x":      false,
+		"/\\evil.example":       false,
+		"/\t/evil.example":      false,
+		"/\n/evil.example":      false,
+		"https://evil.example/": false,
+		"javascript:alert(1)":   false,
+	} {
+		if got := LocalPath(p); got != want {
+			t.Errorf("LocalPath(%q) = %v, want %v", p, got, want)
+		}
+	}
+}
+
+func TestLoginReturnsToNext(t *testing.T) {
+	for next, wantPath := range map[string]string{
+		"/certs/apple?here=1":  "/certs/apple",
+		"//evil.example/":      "/",
+		"https://evil.example": "/",
+	} {
+		e := newEnv(t, member("authstep-users"))
+		resp, err := e.client.Get(e.app.URL + "/auth/login?next=" + url.QueryEscape(next))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := resp.Body.Close(); err != nil {
+			t.Fatal(err)
+		}
+		final := resp.Request.URL
+		if final.Host != strings.TrimPrefix(e.app.URL, "https://") || final.Path != wantPath {
+			t.Errorf("next=%q: ended at %s, want %s on the app", next, final, wantPath)
+		}
+	}
+}

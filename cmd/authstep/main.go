@@ -57,7 +57,17 @@ func run(log *slog.Logger) error {
 	// Email is optional: without SMTP, nothing is queued.
 	var notifier audit.Notifier
 	if cfg.SMTPAddr != "" {
-		mailer, err := notify.NewSMTP(cfg.SMTPAddr, cfg.SMTPFrom, cfg.SMTPUsername, cfg.SMTPPassword)
+		// Trust public CAs and the AuthStep root, so internal relays can use it.
+		roots, err := x509.SystemCertPool()
+		if err != nil {
+			return err
+		}
+		root, err := ca.LoadRoot(cfg.CARootPath)
+		if err != nil {
+			return err
+		}
+		roots.AddCert(root)
+		mailer, err := notify.NewSMTP(cfg.SMTPAddr, cfg.SMTPFrom, cfg.SMTPUsername, cfg.SMTPPassword, roots)
 		if err != nil {
 			return err
 		}

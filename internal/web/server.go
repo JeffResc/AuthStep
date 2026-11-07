@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -145,6 +146,20 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	var expiring []certView
 	for _, c := range list {
 		v := newCertView(c, now)
+		if c.Status == "pending" {
+			expires, downloaded, err := s.store.SCEPChallengeExpiry(r.Context(), c.ID)
+			if err != nil {
+				s.fail(w, r, err)
+				return
+			}
+			if downloaded {
+				if !now.Before(expires) {
+					continue // the profile can no longer enrol
+				}
+				v.Status, v.ContinueURL = "Waiting for device", ""
+				v.Note = "Install the downloaded profile on the device within " + minutesLeft(expires.Sub(now)) + "."
+			}
+		}
 		d.Certificates = append(d.Certificates, v)
 		if v.Revocable && c.NotAfter.Sub(now) <= expiryBanner {
 			expiring = append(expiring, v)
@@ -152,6 +167,15 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	}
 	d.View = expiring
 	s.render(w, http.StatusOK, "home", d)
+}
+
+// minutesLeft renders a duration as whole minutes, rounded up.
+func minutesLeft(d time.Duration) string {
+	m := int((d + time.Minute - 1) / time.Minute)
+	if m == 1 {
+		return "1 minute"
+	}
+	return strconv.Itoa(m) + " minutes"
 }
 
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {

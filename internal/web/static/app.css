@@ -154,9 +154,11 @@ table.certs th { color: var(--muted); font-weight: 600; font-size: 0.9rem; }
   border: 1px solid var(--border);
 }
 
-.status-Active { color: var(--ok); border-color: var(--ok); }
-.status-Revoked,
-.status-Failed { color: var(--danger); border-color: var(--danger); }
+.status-active { color: var(--ok); border-color: var(--ok); }
+.status-revoked,
+.status-failed { color: var(--danger); border-color: var(--danger); }
+.status-waiting { color: var(--warn); border-color: var(--warn); }
+.actions a.continue { color: var(--accent); }
 
 label { display: block; margin: 1rem 0 0.3rem; font-weight: 600; }
 

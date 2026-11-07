@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/JeffResc/AuthStep/internal/audit"
@@ -21,24 +22,35 @@ type certView struct {
 	ID         string
 	DeviceName string
 	Status     string
-	Expires    string
-	Serial     string
-	Revocable  bool
+	// StatusClass styles the status badge.
+	StatusClass string
+	// Note explains what happens next for an Apple device being enrolled.
+	Note    string
+	Expires string
+	Serial  string
+	// ContinueURL resumes an Apple enrolment whose profile was not downloaded yet.
+	ContinueURL string
+	Revocable   bool
 }
 
 func newCertView(c store.Certificate, now time.Time) certView {
 	v := certView{ID: c.ID, DeviceName: c.DeviceName, Serial: c.Serial, Revocable: c.Status == "active" && !c.Expired(now)}
 	switch {
 	case c.Expired(now):
-		v.Status = "Expired"
+		v.Status, v.StatusClass = "Expired", "expired"
 	case c.Status == "active":
-		v.Status = "Active"
+		v.Status, v.StatusClass = "Active", "active"
 	case c.Status == "revoked":
-		v.Status = "Revoked"
+		v.Status, v.StatusClass = "Revoked", "revoked"
 	case c.Status == "issuing":
-		v.Status = "Issuing"
+		v.Status, v.StatusClass = "Issuing", "waiting"
+		v.Note = "The device is requesting its certificate."
 	case c.Status == "failed":
-		v.Status = "Failed"
+		v.Status, v.StatusClass = "Failed", "failed"
+	case c.Status == "pending":
+		v.Status, v.StatusClass = "Waiting for download", "waiting"
+		v.Note = "Download the profile on the device."
+		v.ContinueURL = "/certs/" + url.PathEscape(c.ID) + "/apple"
 	}
 	if !c.NotAfter.IsZero() {
 		v.Expires = c.NotAfter.UTC().Format("2 Jan 2006")
@@ -46,12 +58,12 @@ func newCertView(c store.Certificate, now time.Time) certView {
 	return v
 }
 
-// requirePage sends signed-out users to the start page.
+// requirePage sends signed-out users to sign in, then back to this page.
 func (s *Server) requirePage(h func(http.ResponseWriter, *http.Request, store.User)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sess := auth.SessionFrom(r.Context())
 		if sess == nil {
-			http.Redirect(w, r, "/", http.StatusFound)
+			http.Redirect(w, r, "/auth/login?next="+url.QueryEscape(r.URL.RequestURI()), http.StatusFound)
 			return
 		}
 		h(w, r, sess.User)

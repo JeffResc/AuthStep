@@ -4,19 +4,41 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/JeffResc/AuthStep/internal/certs"
 	"github.com/JeffResc/AuthStep/internal/scep"
 	"github.com/JeffResc/AuthStep/internal/store"
 )
 
+// appleView drives apple.html. Mode is "handoff" (on a non-Apple device:
+// show a QR code), "form" (name the device), "download" or "downloaded".
 type appleView struct {
+	Mode       string
 	ID         string
 	DeviceName string
+	QR         any
+	URL        string
+	InstallBy  string
 }
 
+// appleForm starts an Apple enrolment. The profile must be downloaded on the
+// device that gets the certificate, so other devices see a QR code first.
 func (s *Server) appleForm(w http.ResponseWriter, r *http.Request, _ store.User) {
-	s.render(w, http.StatusOK, "apple", newPageData(r, "Add Apple device"))
+	d := newPageData(r, "Add Apple device")
+	onApple := d.OS == "ios" || d.OS == "macos"
+	if !onApple && r.URL.Query().Get("here") == "" {
+		pageURL := s.baseURL + "/certs/apple"
+		svg, err := qrSVG(pageURL)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		d.View = appleView{Mode: "handoff", QR: svg, URL: pageURL}
+	} else {
+		d.View = appleView{Mode: "form"}
+	}
+	s.render(w, http.StatusOK, "apple", d)
 }
 
 func (s *Server) appleReserve(w http.ResponseWriter, r *http.Request, user store.User) {
@@ -46,8 +68,22 @@ func (s *Server) appleReady(w http.ResponseWriter, r *http.Request, user store.U
 		s.renderError(w, r, http.StatusConflict, "This request was already used. Start again to add another device.")
 		return
 	}
+	expires, downloaded, err := s.store.SCEPChallengeExpiry(r.Context(), c.ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	v := appleView{Mode: "download", ID: c.ID, DeviceName: c.DeviceName}
+	if downloaded {
+		left := time.Until(expires)
+		if left <= 0 {
+			s.renderError(w, r, http.StatusConflict, "This profile expired before it was installed. Start again to add the device.")
+			return
+		}
+		v.Mode, v.InstallBy = "downloaded", minutesLeft(left)
+	}
 	d := newPageData(r, "Install profile")
-	d.View = appleView{ID: c.ID, DeviceName: c.DeviceName}
+	d.View = v
 	s.render(w, http.StatusOK, "apple", d)
 }
 

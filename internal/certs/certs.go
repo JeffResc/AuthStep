@@ -23,8 +23,10 @@ import (
 )
 
 const (
-	Validity        = 365 * 24 * time.Hour
-	PendingTTL      = 15 * time.Minute
+	Validity   = 365 * 24 * time.Hour
+	PendingTTL = 15 * time.Minute
+	// ChallengeTTL is how long a downloaded Apple profile can enrol.
+	ChallengeTTL    = 15 * time.Minute
 	DeviceURIPrefix = "urn:authstep:device:"
 	maxDeviceName   = 64
 )
@@ -175,16 +177,19 @@ func NewUUID() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
 }
 
-// List returns the user's certificates, newest first, without in-progress
-// reservations.
+// List returns the user's certificates, newest first. Pending browser
+// reservations are left out: the browser finishes them in one step. Pending
+// Apple enrolments are kept while they can still complete, which is at most
+// PendingTTL to download the profile plus ChallengeTTL to install it.
 func (s *Service) List(ctx context.Context, user store.User) ([]store.Certificate, error) {
 	all, err := s.store.ListUserCertificates(ctx, user.Sub)
 	if err != nil {
 		return nil, err
 	}
+	now := s.now()
 	out := all[:0]
 	for _, c := range all {
-		if c.Status != "pending" {
+		if c.Status != "pending" || c.Method == "scep" && now.Sub(c.CreatedAt) < PendingTTL+ChallengeTTL {
 			out = append(out, c)
 		}
 	}

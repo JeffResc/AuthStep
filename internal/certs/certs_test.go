@@ -520,3 +520,37 @@ func TestLimitOverrides(t *testing.T) {
 		}
 	}
 }
+
+func TestListShowsAppleEnrolmentsWhileTheyCanComplete(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	if _, err := e.svc.Reserve(ctx, e.user, "laptop", "browser"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.Reserve(ctx, e.user, "iPhone", "scep"); err != nil {
+		t.Fatal(err)
+	}
+	names := func() []string {
+		list, err := e.svc.List(ctx, e.user)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, c := range list {
+			out = append(out, c.DeviceName)
+		}
+		return out
+	}
+	if got := names(); len(got) != 1 || got[0] != "iPhone" {
+		t.Fatalf("list = %v, want only the pending Apple enrolment", got)
+	}
+	// A profile downloaded at the end of PendingTTL can still enrol for ChallengeTTL.
+	e.clock = e.clock.Add(PendingTTL + ChallengeTTL - time.Second)
+	if got := names(); len(got) != 1 {
+		t.Fatalf("list = %v, want the Apple enrolment still shown", got)
+	}
+	e.clock = e.clock.Add(time.Second)
+	if got := names(); len(got) != 0 {
+		t.Fatalf("list = %v, want it gone once it can no longer complete", got)
+	}
+}

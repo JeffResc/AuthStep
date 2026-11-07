@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -31,9 +32,12 @@ type SMTP struct {
 	from       mail.Address
 	username   string
 	password   string
+	roots      *x509.CertPool
 }
 
-func NewSMTP(addr, from, username, password string) (*SMTP, error) {
+// NewSMTP returns a mailer that verifies the server against roots, so an
+// internal relay can use a certificate from the AuthStep CA.
+func NewSMTP(addr, from, username, password string, roots *x509.CertPool) (*SMTP, error) {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, fmt.Errorf("SMTP address: %w", err)
@@ -42,7 +46,7 @@ func NewSMTP(addr, from, username, password string) (*SMTP, error) {
 	if err != nil {
 		return nil, fmt.Errorf("SMTP from address: %w", err)
 	}
-	return &SMTP{addr: addr, host: host, from: *f, username: username, password: password}, nil
+	return &SMTP{addr: addr, host: host, from: *f, username: username, password: password, roots: roots}, nil
 }
 
 func (m *SMTP) Send(ctx context.Context, to, subject, body string) error {
@@ -57,7 +61,7 @@ func (m *SMTP) Send(ctx context.Context, to, subject, body string) error {
 
 	ctx, cancel := context.WithTimeout(ctx, smtpTimeout)
 	defer cancel()
-	tlsConf := &tls.Config{ServerName: m.host, MinVersion: tls.VersionTLS12}
+	tlsConf := &tls.Config{ServerName: m.host, MinVersion: tls.VersionTLS12, RootCAs: m.roots}
 	var conn net.Conn
 	if strings.HasSuffix(m.addr, ":465") {
 		conn, err = (&tls.Dialer{Config: tlsConf}).DialContext(ctx, "tcp", m.addr)

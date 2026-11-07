@@ -30,6 +30,20 @@ func (s *Store) CreateSCEPChallenge(ctx context.Context, certID, hash string, ex
 	})
 }
 
+// SCEPChallengeExpiry reports whether a challenge (and so a profile) was
+// issued for certID, and until when it can be used.
+func (s *Store) SCEPChallengeExpiry(ctx context.Context, certID string) (time.Time, bool, error) {
+	var expires int64
+	err := s.db.QueryRowContext(ctx, `SELECT expires_at FROM scep_challenges WHERE cert_id = ?`, certID).Scan(&expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return time.Unix(expires, 0), true, nil
+}
+
 // Enrolment is a SCEP certificate record and its owner's email.
 type Enrolment struct {
 	Certificate

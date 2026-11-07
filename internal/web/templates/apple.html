@@ -1,21 +1,20 @@
 {{define "content"}}
 <section class="card narrow">
-  {{with .View}}
-  <h1>Install the profile</h1>
-  <p>Open this page on the iPhone, iPad or Mac that should get the certificate, then download the profile for "{{.DeviceName}}".</p>
-  <a class="button" href="/certs/{{pathEscape .ID}}/apple.mobileconfig">Download profile</a>
-  <ol class="steps">
-    <li>On iPhone or iPad: within 8 minutes, open <strong>Settings</strong>, tap <strong>Profile Downloaded</strong>, then tap <strong>Install</strong> in the upper-right corner.</li>
-    <li>On a Mac: choose <strong>Apple menu → System Settings → General → Device Management</strong>, double-click the profile under <strong>Downloaded</strong>, then click <strong>Install</strong>.</li>
-    <li>The device creates its own key and requests the certificate. The key cannot be exported.</li>
-  </ol>
-  <p class="muted small">On iPhone, if Stolen Device Protection is on and you are not in a familiar location, turn it off before you install the profile and on again afterwards.</p>
-  <p class="muted small">The download works once and expires 15 minutes after you start. <a href="/">Back to your certificates</a></p>
-  {{else}}
+  {{$v := .View}}
+  {{if eq $v.Mode "handoff"}}
   <h1>Add Apple device</h1>
-  <p>For iPhone, iPad and Mac. The device creates its own key and installs the certificate through a configuration profile.</p>
+  <p>Do this <strong>on the iPhone, iPad or Mac</strong> that should get the certificate. The device creates its own key while it installs a profile, so the profile has to be downloaded there.</p>
+  <p>Scan this code with the iPhone or iPad camera, or open the address in Safari on the Mac:</p>
+  <div class="qr-wrap">{{$v.QR}}</div>
+  <p class="center"><code>{{$v.URL}}</code></p>
+  <p class="muted small">Already on the Apple device? <a href="/certs/apple?here=1">Continue on this device</a></p>
+  <p><a href="/">Back to your certificates</a></p>
+
+  {{else if eq $v.Mode "form"}}
+  <h1>Add Apple device</h1>
+  <p>Use this page on the iPhone, iPad or Mac that should get the certificate. It creates its own key while it installs a profile; the key cannot be exported.</p>
   <form method="post" action="/certs/apple">
-    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
     <label for="device-name">Device name</label>
     <input id="device-name" name="deviceName" maxlength="64" required placeholder="e.g. Work iPhone" autocomplete="off">
     <div class="form-actions">
@@ -23,6 +22,22 @@
       <a class="button secondary" href="/">Cancel</a>
     </div>
   </form>
+
+  {{else}}
+  <h1>Install the profile</h1>
+  {{if eq $v.Mode "downloaded"}}
+  <p>The profile for "{{$v.DeviceName}}" was downloaded. Install it on the device within {{$v.InstallBy}}:</p>
+  {{else}}
+  <p>Download the profile for "{{$v.DeviceName}}" on this device, then install it:</p>
+  <a class="button" href="/certs/{{pathEscape $v.ID}}/apple.mobileconfig">Download profile</a>
+  {{end}}
+  <ol class="steps">
+    <li>On iPhone or iPad: within 8 minutes, open <strong>Settings</strong>, tap <strong>Profile Downloaded</strong>, then tap <strong>Install</strong> in the upper-right corner.</li>
+    <li>On a Mac: choose <strong>Apple menu → System Settings → General → Device Management</strong>, double-click the profile under <strong>Downloaded</strong>, then click <strong>Install</strong>.</li>
+    <li>The device then requests its certificate. Your certificate list shows it as Issuing, then Active.</li>
+  </ol>
+  <p class="muted small">On iPhone, if Stolen Device Protection is on and you are not in a familiar location, turn it off before you install the profile and on again afterwards.</p>
+  <p class="muted small">The download works once. <a href="/">Back to your certificates</a></p>
   {{end}}
 </section>
 {{end}}

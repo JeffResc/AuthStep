@@ -24,9 +24,15 @@
       {{range .Certificates}}
       <tr>
         <td>{{.DeviceName}}</td>
-        <td><span class="status status-{{.Status}}">{{.Status}}</span></td>
+        <td>
+          <span class="status status-{{.StatusClass}}">{{.Status}}</span>
+          {{with .Note}}<div class="muted small">{{.}}</div>{{end}}
+        </td>
         <td>{{.Expires}}</td>
-        <td class="actions">{{if .Revocable}}<a href="/certs/{{pathEscape .ID}}/revoke">Revoke</a>{{end}}</td>
+        <td class="actions">
+          {{if .Revocable}}<a href="/certs/{{pathEscape .ID}}/revoke">Revoke</a>{{end}}
+          {{with .ContinueURL}}<a class="continue" href="{{.}}">Continue</a>{{end}}
+        </td>
       </tr>
       {{end}}
     </tbody>

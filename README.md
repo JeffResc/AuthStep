@@ -19,6 +19,16 @@ The chart can also deploy step-ca for you (`step-certificates.enabled: true`). S
 
 Binaries for Linux and macOS (amd64, arm64) are attached to each [GitHub release](https://github.com/JeffResc/AuthStep/releases), with SHA-256 checksums. The container image `ghcr.io/jeffresc/authstep` is built on distroless (`static-debian12:nonroot`) for `linux/amd64` and `linux/arm64`.
 
+## Try it locally
+
+```bash
+hack/demo-k3d.sh up            # k3d cluster with AuthStep, step-ca, Dex and Mailpit (about a minute)
+hack/demo-k3d.sh up --public   # the same, reachable from your phone through Cloudflare quick tunnels
+hack/demo-k3d.sh down
+```
+
+Locally, open http://authstep.localhost:8081 ("In group" signs in as an admin; "No group" is refused) and http://mail.localhost:8081 for the emails. With `--public`, the script prints `https://*.trycloudflare.com` addresses instead; they are public while the demo runs, so tear it down when you are done. The demo does not change your kubectl context.
+
 ## Development
 
 ```bash

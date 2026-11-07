@@ -26,7 +26,7 @@
       {{range .View.Certificates}}
       <tr>
         <td>{{.DeviceName}}</td>
-        <td><span class="status status-{{.Status}}">{{.Status}}</span></td>
+        <td><span class="status status-{{.StatusClass}}">{{.Status}}</span></td>
         <td>{{.Expires}}</td>
         <td class="mono small">{{.Serial}}</td>
         <td class="actions">{{if .Revocable}}<a href="/admin/certs/{{pathEscape .ID}}/revoke">Revoke</a>{{end}}</td>

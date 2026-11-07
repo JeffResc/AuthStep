@@ -14,7 +14,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -84,15 +86,23 @@ type loginState struct {
 	Nonce    string    `json:"n"`
 	Verifier string    `json:"v"`
 	Expires  time.Time `json:"e"`
+	// Next is the local page to return to after sign-in.
+	Next string `json:"r"`
 }
 
-// Login starts the authorization code flow.
+// Login starts the authorization code flow. The optional next query
+// parameter is the local page to return to afterwards.
 func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
+	next := r.URL.Query().Get("next")
+	if !LocalPath(next) {
+		next = "/"
+	}
 	ls := loginState{
 		State:    randomToken(),
 		Nonce:    randomToken(),
 		Verifier: oauth2.GenerateVerifier(),
 		Expires:  a.now().Add(loginStateTTL),
+		Next:     next,
 	}
 	b, _ := json.Marshal(ls)
 	http.SetCookie(w, &http.Cookie{
@@ -162,7 +172,22 @@ func (a *Auth) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setSessionCookie(w, token)
-	http.Redirect(w, r, "/", http.StatusFound)
+	next := ls.Next
+	if !LocalPath(next) {
+		next = "/"
+	}
+	http.Redirect(w, r, next, http.StatusFound)
+}
+
+// LocalPath reports whether p is a path on this site, so redirecting to it
+// cannot send the user elsewhere. Browsers treat "//host", backslashes and
+// stripped tab or newline characters as ways to reach another host.
+func LocalPath(p string) bool {
+	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.ContainsAny(p, "\\\t\r\n") {
+		return false
+	}
+	u, err := url.Parse(p)
+	return err == nil && u.Scheme == "" && u.Host == ""
 }
 
 // Logout deletes the session. It is a POST protected by CSRF.

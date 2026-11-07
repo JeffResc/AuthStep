@@ -238,7 +238,7 @@ func TestChallengeWebhook(t *testing.T) {
 func TestChallengeExpires(t *testing.T) {
 	e := newEnv(t)
 	_, challenge := e.enrol(t)
-	e.clock = e.clock.Add(ChallengeTTL)
+	e.clock = e.clock.Add(certs.ChallengeTTL)
 	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); resp.Allow {
 		t.Fatal("expired challenge was allowed")
 	}

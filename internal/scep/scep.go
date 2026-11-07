@@ -23,10 +23,7 @@ import (
 	"github.com/JeffResc/AuthStep/internal/store"
 )
 
-const (
-	ChallengeTTL   = 15 * time.Minute
-	maxWebhookBody = 64 << 10
-)
+const maxWebhookBody = 64 << 10
 
 var ErrNotSCEP = errors.New("certificate is not a pending SCEP enrolment")
 
@@ -64,7 +61,7 @@ func (s *Service) Profile(ctx context.Context, user store.User, certID string) (
 		return nil, err
 	}
 	challenge := base64.RawURLEncoding.EncodeToString(raw)
-	if err := s.store.CreateSCEPChallenge(ctx, certID, hashChallenge(challenge), now.Add(ChallengeTTL)); err != nil {
+	if err := s.store.CreateSCEPChallenge(ctx, certID, hashChallenge(challenge), now.Add(certs.ChallengeTTL)); err != nil {
 		return nil, err
 	}
 
