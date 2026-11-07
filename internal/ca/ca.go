@@ -186,7 +186,7 @@ func (c *Client) token(sub, aud string, extra map[string]any) (string, error) {
 		Expiry:    jose.NewNumericDate(now.Add(tokenLifetime)),
 	}
 	extra["sha"] = c.rootSHA
-	return jose.Signed(sig).Claims(claims).Claims(extra).CompactSerialize()
+	return jose.Signed(sig).Claims(claims).Claims(extra).Serialize()
 }
 
 // Error is a non-2xx response from step-ca.

@@ -4,9 +4,9 @@ go 1.26.10
 
 require (
 	github.com/coreos/go-oidc/v3 v3.21.0
-	github.com/go-jose/go-jose/v4 v4.1.4
+	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/smallstep/pkcs7 v0.2.3
-	go.step.sm/crypto v0.91.1
+	go.step.sm/crypto v0.92.0
 	golang.org/x/oauth2 v0.37.0
 	howett.net/plist v1.0.1
 	modernc.org/sqlite v1.62.0
@@ -16,7 +16,6 @@ require (
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.5 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
