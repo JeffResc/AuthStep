@@ -1,0 +1,31 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "package-name": "authstep",
+      "release-as": "0.1.0",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "changelog-sections": [
+        {"type": "feat", "section": "Features"},
+        {"type": "fix", "section": "Bug Fixes"},
+        {"type": "chore", "section": "Miscellaneous"},
+        {"type": "docs", "section": "Documentation", "hidden": true},
+        {"type": "ci", "section": "CI", "hidden": true}
+      ],
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "charts/authstep/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/authstep/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        }
+      ]
+    }
+  },
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
+}

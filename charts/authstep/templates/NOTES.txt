@@ -8,7 +8,16 @@ The certificate in Secret "{{ .Values.internalTLS.existingSecret }}" must includ
 chain to the step-ca root, and be valid for:
   {{ include "authstep.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
 
-step-ca's own TLS certificate must be valid for the host in ca.url ({{ .Values.ca.url }}).
+step-ca's own TLS certificate must be valid for the host of {{ include "authstep.caURL" . }}.
+{{- if include "authstep.stepCAEnabled" . }}
+
+step-ca is deployed by this release ({{ include "authstep.stepCAFullname" . }}). It reads these Secrets,
+which must exist before it starts (hack/gen-step-ca-secrets.sh creates them):
+  {{ include "authstep.stepCAFullname" . }}-config       ca.json, defaults.json
+  {{ include "authstep.stepCAFullname" . }}-certs        root_ca.crt, intermediate_ca.crt
+  {{ include "authstep.stepCAFullname" . }}-secrets      intermediate_ca_key
+  {{ include "authstep.stepCAFullname" . }}-ca-password  password
+{{- end }}
 {{- if not .Values.smtp.addr }}
 
 smtp.addr is empty: AuthStep sends no email (audit notices, expiry reminders).

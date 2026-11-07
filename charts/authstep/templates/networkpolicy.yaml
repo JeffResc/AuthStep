@@ -16,10 +16,17 @@ spec:
         - port: http
     # SCEP webhooks are for step-ca only. AuthStep also requires step-ca's client certificate.
     - from:
+        {{- if include "authstep.stepCAEnabled" . }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: step-certificates
+              app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- else }}
         - namespaceSelector:
             {{- toYaml .Values.networkPolicy.stepCA.namespaceSelector | nindent 12 }}
           podSelector:
             {{- toYaml .Values.networkPolicy.stepCA.podSelector | nindent 12 }}
+        {{- end }}
       ports:
         - port: webhooks
 {{- end }}
