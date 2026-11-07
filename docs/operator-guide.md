@@ -16,7 +16,25 @@ Apple devices ── Ingress ──▶ step-ca /scep ──▶ AuthStep :9443 (w
 
 ## 2. step-ca
 
-### ca.json
+### Option A: deploy step-ca with the AuthStep chart
+
+The chart includes smallstep's `step-certificates` chart as an optional subchart. With `step-certificates.enabled: true`, step-ca runs in the same release and namespace, and AuthStep wires itself to it: the CA URL, the root certificate (from the subchart's `-certs` Secret) and the NetworkPolicy selector are set for you.
+
+The subchart runs in `existingSecrets` mode, so its Secrets must exist first. `hack/gen-step-ca-secrets.sh` creates them, together with AuthStep's provisioner key and internal TLS certificate, from your intermediate CA (see [root-setup.md](root-setup.md)):
+
+```bash
+hack/gen-step-ca-secrets.sh --out ./authstep-secrets \
+  --release authstep --namespace authstep --public-ca-url https://ca.example.com \
+  --root root_ca.crt --intermediate intermediate_ca.crt \
+  --intermediate-key intermediate_ca_key --ca-password-file intermediate-pass.txt
+kubectl apply -n authstep -f ./authstep-secrets/secrets.yaml
+```
+
+Without the `--root`/`--intermediate` options it creates a new root and intermediate, which is fine for trying AuthStep out. The script prints the values to set; it builds the same `ca.json` that Option B describes by hand. `secrets.yaml` holds the intermediate key: store it like one (or load the files into External Secrets instead). Then publish SCEP and the CRL as described below, and continue with section 3.
+
+### Option B: run step-ca separately
+
+#### ca.json
 
 Start from the `ca.json` that `step ca init` creates, then make these changes. `dev/step-ca-init.sh` does the same for local development.
 
@@ -64,7 +82,7 @@ Copy the `authstep-jwk` provisioner's `encryptedKey` value into a file for AuthS
 jq -r '.authority.provisioners[] | select(.name == "authstep-jwk") | .encryptedKey' ca.json > authstep-jwk.jwe
 ```
 
-### Secrets and install
+#### Secrets and install
 
 In production, create these with External Secrets or the 1Password Operator instead of `kubectl`:
 

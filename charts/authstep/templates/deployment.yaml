@@ -87,7 +87,7 @@ spec:
             - name: AUTHSTEP_ADMIN_GROUP
               value: {{ required "oidc.adminGroup is required" .Values.oidc.adminGroup | quote }}
             - name: AUTHSTEP_CA_URL
-              value: {{ .Values.ca.url | quote }}
+              value: {{ include "authstep.caURL" . | quote }}
             - name: AUTHSTEP_CA_ROOT
               value: /etc/authstep/ca/root_ca.crt
             - name: AUTHSTEP_CA_PROVISIONER
@@ -173,11 +173,21 @@ spec:
               - key: {{ .Values.oidc.clientSecret.key }}
                 path: client-secret
         - name: ca-root
+          {{- if .Values.ca.root.configMap }}
           configMap:
-            name: {{ required "ca.root.configMap is required" .Values.ca.root.configMap }}
+            name: {{ .Values.ca.root.configMap }}
             items:
               - key: {{ .Values.ca.root.key }}
                 path: root_ca.crt
+          {{- else if include "authstep.stepCAEnabled" . }}
+          secret:
+            secretName: {{ include "authstep.stepCAFullname" . }}-certs
+            items:
+              - key: root_ca.crt
+                path: root_ca.crt
+          {{- else }}
+          {{- fail "ca.root.configMap is required unless step-certificates.enabled is true" }}
+          {{- end }}
         - name: provisioner
           secret:
             secretName: {{ required "ca.provisionerKey.existingSecret is required" .Values.ca.provisionerKey.existingSecret }}

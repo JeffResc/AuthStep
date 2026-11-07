@@ -1,0 +1,92 @@
+suite: deployment
+templates:
+  - templates/deployment.yaml
+values:
+  - values-required.yaml
+release:
+  name: authstep
+  namespace: pki
+tests:
+  - it: runs a single replica that is replaced, not rolled, because SQLite is on a ReadWriteOnce volume
+    set:
+      ca: {url: https://ca.example.svc, root: {configMap: root}}
+    asserts:
+      - equal: {path: spec.replicas, value: 1}
+      - equal: {path: spec.strategy.type, value: Recreate}
+
+  - it: uses ca.url and the root ConfigMap when the subchart is disabled
+    set:
+      ca: {url: https://ca.example.svc, root: {configMap: my-root}}
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AUTHSTEP_CA_URL, value: https://ca.example.svc}
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: ca-root
+            configMap: {name: my-root, items: [{key: root_ca.crt, path: root_ca.crt}]}
+
+  - it: wires itself to the step-certificates subchart when enabled
+    set:
+      step-certificates.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AUTHSTEP_CA_URL, value: https://authstep-step-certificates.pki.svc.cluster.local}
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: ca-root
+            secret: {secretName: authstep-step-certificates-certs, items: [{key: root_ca.crt, path: root_ca.crt}]}
+
+  - it: follows the subchart's fullnameOverride
+    set:
+      step-certificates: {enabled: true, fullnameOverride: ca}
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AUTHSTEP_CA_URL, value: https://ca.pki.svc.cluster.local}
+
+  - it: fails without ca.url when the subchart is disabled
+    asserts:
+      - failedTemplate:
+          errorMessage: ca.url is required unless step-certificates.enabled is true
+
+  - it: fails without a root when the subchart is disabled
+    set:
+      ca.url: https://ca.example.svc
+    asserts:
+      - failedTemplate:
+          errorMessage: ca.root.configMap is required unless step-certificates.enabled is true
+
+  - it: has no init containers without Litestream
+    set:
+      step-certificates.enabled: true
+    asserts:
+      - notExists: {path: spec.template.spec.initContainers}
+
+  - it: joins trusted proxies and sets SMTP only when configured
+    set:
+      step-certificates.enabled: true
+      trustedProxies: [10.42.0.0/16, 10.43.0.0/16]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AUTHSTEP_TRUSTED_PROXIES, value: "10.42.0.0/16,10.43.0.0/16"}
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AUTHSTEP_SMTP_ADDR, value: ""}
+          any: true
+
+  - it: mounts the SMTP password only with a username
+    set:
+      step-certificates.enabled: true
+      smtp: {addr: smtp.example.com:587, from: a@example.com, username: u, password: {existingSecret: smtp}}
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AUTHSTEP_SMTP_PASSWORD_FILE, value: /etc/authstep/smtp/password}
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: smtp, secret: {secretName: smtp, items: [{key: password, path: password}]}}

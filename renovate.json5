@@ -1,0 +1,32 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended"],
+  customManagers: [
+    {
+      customType: "regex",
+      description: "Track Go tools installed with `go install <module>/cmd/...@vX` in workflow run steps, which no built-in manager parses.",
+      managerFilePatterns: ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      matchStrings: [
+        "go install (?<depName>golang\\.org/x/(?:tools|vuln))/cmd/[a-z]+@(?<currentValue>v[\\d.]+)",
+      ],
+      datasourceTemplate: "go",
+    },
+  ],
+  packageRules: [
+    {
+      description: "Keep the Go toolchain and everything version-locked to it in one PR: the language version (go.mod directive + setup-go), the golang Docker image, golangci-lint, and the x/tools analyzers (deadcode). A Go bump that outpaces the tooling breaks CI — deadcode's SSA builder panics on new syntax and golangci-lint hits typecheck errors on the new stdlib. Grouping forces CI to validate the whole set together instead of merging them piecemeal.",
+      groupName: "go-toolchain",
+      matchDepNames: [
+        "go",
+        "golang",
+        "golangci/golangci-lint",
+        "golang.org/x/tools",
+      ],
+    },
+    {
+      description: "The chart pins step-ca 0.30.2 behaviour (webhooks, CRL, templates) that AuthStep relies on; review step-certificates updates together with the step-ca image used in dev scripts.",
+      groupName: "step-ca",
+      matchDepNames: ["step-certificates", "smallstep/step-ca"],
+    },
+  ],
+}

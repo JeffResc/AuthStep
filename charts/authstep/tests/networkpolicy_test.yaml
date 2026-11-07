@@ -1,0 +1,43 @@
+suite: networkpolicy
+templates:
+  - templates/networkpolicy.yaml
+values:
+  - values-required.yaml
+release:
+  name: authstep
+  namespace: pki
+tests:
+  - it: lets only step-ca in another namespace reach the webhook port
+    set:
+      ca: {url: https://ca.example.svc, root: {configMap: root}}
+    asserts:
+      - equal:
+          path: spec.ingress[1]
+          value:
+            from:
+              - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: step}}
+                podSelector: {matchLabels: {app.kubernetes.io/name: step-certificates}}
+            ports: [{port: webhooks}]
+
+  - it: selects the subchart's pods when step-ca is deployed with the release
+    set:
+      step-certificates.enabled: true
+    asserts:
+      - equal:
+          path: spec.ingress[1].from
+          value:
+            - podSelector:
+                matchLabels: {app.kubernetes.io/name: step-certificates, app.kubernetes.io/instance: authstep}
+
+  - it: keeps the public port open
+    set:
+      step-certificates.enabled: true
+    asserts:
+      - equal: {path: "spec.ingress[0]", value: {ports: [{port: http}]}}
+
+  - it: can be disabled
+    set:
+      step-certificates.enabled: true
+      networkPolicy.enabled: false
+    asserts:
+      - hasDocuments: {count: 0}

@@ -27,9 +27,11 @@ oidc:
 
 ca:
   # -- step-ca URL. Its host must be in step-ca's dnsNames: AuthStep builds token audiences from it and
-  # accepts webhook calls only from a client certificate valid for this host.
-  url: https://step-certificates.step.svc.cluster.local
-  # -- ConfigMap holding the root CA certificate.
+  # accepts webhook calls only from a client certificate valid for this host. Leave empty with the
+  # step-certificates subchart to use its in-cluster service.
+  url: ""
+  # -- ConfigMap holding the root CA certificate. Leave empty with the step-certificates subchart to
+  # read root_ca.crt from its <release>-step-certificates-certs Secret.
   root:
     configMap: ""
     key: root_ca.crt
@@ -109,6 +111,7 @@ ingress:
 networkPolicy:
   # -- Restrict the webhook port to step-ca pods. The public port stays open to everything.
   enabled: true
+  # -- Where step-ca runs when the subchart is disabled. With the subchart, its pods are selected automatically.
   stepCA:
     namespaceSelector:
       matchLabels:
@@ -136,3 +139,20 @@ securityContext:
   readOnlyRootFilesystem: true
   capabilities:
     drop: ["ALL"]
+
+# Optional step-ca from smallstep's step-certificates chart (https://github.com/smallstep/helm-charts),
+# deployed in the same release. It runs in existingSecrets mode: create its Secrets before installing,
+# e.g. with hack/gen-step-ca-secrets.sh (see docs/operator-guide.md). Any step-certificates value can be
+# set here.
+step-certificates:
+  # -- Deploy step-ca with this release.
+  enabled: false
+  existingSecrets:
+    enabled: true
+    ca: true
+    certsAsSecret: true
+    configAsSecret: true
+  bootstrap:
+    enabled: false
+    configmaps: false
+    secrets: false

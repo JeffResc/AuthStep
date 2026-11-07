@@ -1,0 +1,43 @@
+suite: litestream
+templates:
+  - templates/deployment.yaml
+  - templates/litestream-configmap.yaml
+values:
+  - values-required.yaml
+release:
+  name: authstep
+  namespace: pki
+set:
+  step-certificates.enabled: true
+  litestream:
+    enabled: true
+    url: s3://bucket/authstep
+    endpoint: http://s3.example.svc:8333
+    forcePathStyle: true
+    existingSecret: ls
+tests:
+  - it: restores into an empty volume, then replicates as a native sidecar
+    template: templates/deployment.yaml
+    asserts:
+      - equal: {path: "spec.template.spec.initContainers[0].name", value: litestream-restore}
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: -if-replica-exists
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: -if-db-not-exists
+      - equal: {path: "spec.template.spec.initContainers[1].name", value: litestream}
+      - equal: {path: "spec.template.spec.initContainers[1].restartPolicy", value: Always}
+
+  - it: writes the replica settings
+    template: templates/litestream-configmap.yaml
+    asserts:
+      - equal:
+          path: data["litestream.yml"]
+          value: |
+            dbs:
+              - path: /data/authstep.db
+                replica:
+                  url: "s3://bucket/authstep"
+                  endpoint: "http://s3.example.svc:8333"
+                  force-path-style: true

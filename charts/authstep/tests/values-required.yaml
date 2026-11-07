@@ -1,0 +1,9 @@
+oidc:
+  issuer: https://idp.example.com
+  clientSecret: {existingSecret: oidc}
+  issuerGroup: users
+  adminGroup: admins
+ca:
+  provisionerKey: {existingSecret: provisioner}
+internalTLS: {existingSecret: internal-tls}
+profileSigning: {existingSecret: signing}

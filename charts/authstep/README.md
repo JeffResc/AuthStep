@@ -4,6 +4,12 @@
 
 Self-service client certificates for user devices, issued through step-ca.
 
+## Requirements
+
+| Repository | Name | Version |
+|------------|------|---------|
+| https://smallstep.github.io/helm-charts | step-certificates | 1.30.1 |
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -12,8 +18,8 @@ Self-service client certificates for user devices, issued through step-ca.
 | baseURL | string | `"https://authstep.example.com"` | Public URL users open, without a trailing slash. Must be https (http only for localhost and *.localhost). |
 | ca.provisioner | string | `"authstep-jwk"` | JWK provisioner name in ca.json. |
 | ca.provisionerKey | object | `{"existingSecret":"","keyKey":"authstep-jwk.jwe","passwordKey":"password"}` | Secret with the provisioner's encryptedKey (JWE from ca.json) and its password. |
-| ca.root | object | `{"configMap":"","key":"root_ca.crt"}` | ConfigMap holding the root CA certificate. |
-| ca.url | string | `"https://step-certificates.step.svc.cluster.local"` | step-ca URL. Its host must be in step-ca's dnsNames: AuthStep builds token audiences from it and accepts webhook calls only from a client certificate valid for this host. |
+| ca.root | object | `{"configMap":"","key":"root_ca.crt"}` | ConfigMap holding the root CA certificate. Leave empty with the step-certificates subchart to read root_ca.crt from its <release>-step-certificates-certs Secret. |
+| ca.url | string | `""` | step-ca URL. Its host must be in step-ca's dnsNames: AuthStep builds token audiences from it and accepts webhook calls only from a client certificate valid for this host. Leave empty with the step-certificates subchart to use its in-cluster service. |
 | image | object | `{"pullPolicy":"IfNotPresent","repository":"ghcr.io/jeffresc/authstep","tag":""}` | Container image. |
 | image.tag | string | `""` | Defaults to the chart appVersion. |
 | imagePullSecrets | list | `[]` |  |
@@ -34,8 +40,7 @@ Self-service client certificates for user devices, issued through step-ca.
 | litestream.resources | object | `{}` |  |
 | litestream.url | string | `""` | Replica URL, e.g. s3://bucket/authstep. |
 | networkPolicy.enabled | bool | `true` | Restrict the webhook port to step-ca pods. The public port stays open to everything. |
-| networkPolicy.stepCA.namespaceSelector.matchLabels."kubernetes.io/metadata.name" | string | `"step"` |  |
-| networkPolicy.stepCA.podSelector.matchLabels."app.kubernetes.io/name" | string | `"step-certificates"` |  |
+| networkPolicy.stepCA | object | `{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"step"}},"podSelector":{"matchLabels":{"app.kubernetes.io/name":"step-certificates"}}}` | Where step-ca runs when the subchart is disabled. With the subchart, its pods are selected automatically. |
 | nodeSelector | object | `{}` |  |
 | oidc.adminGroup | string | `""` | Group that grants admin rights. Admins must also be in issuerGroup. |
 | oidc.clientID | string | `"authstep"` |  |
@@ -66,6 +71,14 @@ Self-service client certificates for user devices, issued through step-ca.
 | smtp.password.existingSecret | string | `""` |  |
 | smtp.password.key | string | `"password"` |  |
 | smtp.username | string | `""` |  |
+| step-certificates.bootstrap.configmaps | bool | `false` |  |
+| step-certificates.bootstrap.enabled | bool | `false` |  |
+| step-certificates.bootstrap.secrets | bool | `false` |  |
+| step-certificates.enabled | bool | `false` | Deploy step-ca with this release. |
+| step-certificates.existingSecrets.ca | bool | `true` |  |
+| step-certificates.existingSecrets.certsAsSecret | bool | `true` |  |
+| step-certificates.existingSecrets.configAsSecret | bool | `true` |  |
+| step-certificates.existingSecrets.enabled | bool | `true` |  |
 | tolerations | list | `[]` |  |
 | trustedProxies | list | `[]` | CIDRs of reverse proxies whose X-Forwarded-For is trusted for the audit log client IP, e.g. the ingress controller pod network. |
 

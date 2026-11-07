@@ -25,6 +25,9 @@ import (
 	"github.com/JeffResc/AuthStep/internal/web"
 )
 
+// version is set at build time with -ldflags "-X main.version=...".
+var version = "dev"
+
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if err := run(log); err != nil {
@@ -106,7 +109,7 @@ func run(log *slog.Logger) error {
 	}
 	errc := make(chan error, 2)
 	go func() {
-		log.Info("listening", "addr", cfg.ListenAddr, "base_url", cfg.BaseURL.String())
+		log.Info("listening", "addr", cfg.ListenAddr, "base_url", cfg.BaseURL.String(), "version", version)
 		errc <- srv.ListenAndServe()
 	}()
 	go func() {
