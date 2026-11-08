@@ -125,6 +125,10 @@ spec:
             - name: AUTHSTEP_ADMIN_EMAIL
               value: {{ . | quote }}
             {{- end }}
+            {{- if .Values.smtp.allowPlaintext }}
+            - name: AUTHSTEP_SMTP_ALLOW_PLAINTEXT
+              value: "true"
+            {{- end }}
             {{- end }}
           readinessProbe:
             httpGet:

@@ -67,6 +67,7 @@ Self-service client certificates for user devices, issued through step-ca.
 | service.type | string | `"ClusterIP"` |  |
 | smtp.addr | string | `""` | host:port. Empty disables all email. Port 465 uses implicit TLS; others need STARTTLS. |
 | smtp.adminEmail | string | `""` | Address that receives every audit event. Optional. |
+| smtp.allowPlaintext | bool | `false` | Send without TLS when the server does not offer STARTTLS, e.g. an internal relay on port 25. Credentials are never sent without TLS, so leave username empty. |
 | smtp.from | string | `""` |  |
 | smtp.password.existingSecret | string | `""` |  |
 | smtp.password.key | string | `"password"` |  |
