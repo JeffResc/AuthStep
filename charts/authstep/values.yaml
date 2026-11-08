@@ -13,7 +13,12 @@ baseURL: https://authstep.example.com
 oidc:
   # -- OIDC issuer URL. AuthStep must reach it at startup.
   issuer: ""
+  # -- OIDC client ID. Ignored when clientIDSecret.existingSecret is set.
   clientID: authstep
+  # -- Secret holding the OIDC client ID. Overrides clientID when set. May be the clientSecret Secret.
+  clientIDSecret:
+    existingSecret: ""
+    key: client-id
   # -- Secret holding the OIDC client secret.
   clientSecret:
     existingSecret: ""

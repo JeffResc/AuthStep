@@ -43,7 +43,8 @@ Self-service client certificates for user devices, issued through step-ca.
 | networkPolicy.stepCA | object | `{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"step"}},"podSelector":{"matchLabels":{"app.kubernetes.io/name":"step-certificates"}}}` | Where step-ca runs when the subchart is disabled. With the subchart, its pods are selected automatically. |
 | nodeSelector | object | `{}` |  |
 | oidc.adminGroup | string | `""` | Group that grants admin rights. Admins must also be in issuerGroup. |
-| oidc.clientID | string | `"authstep"` |  |
+| oidc.clientID | string | `"authstep"` | OIDC client ID. Ignored when clientIDSecret.existingSecret is set. |
+| oidc.clientIDSecret | object | `{"existingSecret":"","key":"client-id"}` | Secret holding the OIDC client ID. Overrides clientID when set. May be the clientSecret Secret. |
 | oidc.clientSecret | object | `{"existingSecret":"","key":"client-secret"}` | Secret holding the OIDC client secret. |
 | oidc.groupsClaim | string | `"groups"` | ID token claim that lists the user's groups. |
 | oidc.issuer | string | `""` | OIDC issuer URL. AuthStep must reach it at startup. |

@@ -76,8 +76,13 @@ spec:
               value: {{ include "authstep.dbPath" . }}
             - name: AUTHSTEP_OIDC_ISSUER
               value: {{ required "oidc.issuer is required" .Values.oidc.issuer | quote }}
+            {{- if .Values.oidc.clientIDSecret.existingSecret }}
+            - name: AUTHSTEP_OIDC_CLIENT_ID_FILE
+              value: /etc/authstep/oidc-client-id/client-id
+            {{- else }}
             - name: AUTHSTEP_OIDC_CLIENT_ID
               value: {{ .Values.oidc.clientID | quote }}
+            {{- end }}
             - name: AUTHSTEP_OIDC_CLIENT_SECRET_FILE
               value: /etc/authstep/oidc/client-secret
             - name: AUTHSTEP_OIDC_GROUPS_CLAIM
@@ -149,6 +154,11 @@ spec:
             - name: oidc
               mountPath: /etc/authstep/oidc
               readOnly: true
+            {{- if .Values.oidc.clientIDSecret.existingSecret }}
+            - name: oidc-client-id
+              mountPath: /etc/authstep/oidc-client-id
+              readOnly: true
+            {{- end }}
             - name: ca-root
               mountPath: /etc/authstep/ca
               readOnly: true
@@ -176,6 +186,14 @@ spec:
             items:
               - key: {{ .Values.oidc.clientSecret.key }}
                 path: client-secret
+        {{- with .Values.oidc.clientIDSecret.existingSecret }}
+        - name: oidc-client-id
+          secret:
+            secretName: {{ . }}
+            items:
+              - key: {{ $.Values.oidc.clientIDSecret.key }}
+                path: client-id
+        {{- end }}
         - name: ca-root
           {{- if .Values.ca.root.configMap }}
           configMap:

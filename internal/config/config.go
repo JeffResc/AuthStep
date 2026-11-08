@@ -76,13 +76,12 @@ func Load() (*Config, error) {
 	}
 
 	c := &Config{
-		ListenAddr:   getDefault("AUTHSTEP_LISTEN_ADDR", ":8080"),
-		DBPath:       getDefault("AUTHSTEP_DB_PATH", "authstep.db"),
-		OIDCIssuer:   req("AUTHSTEP_OIDC_ISSUER"),
-		OIDCClientID: req("AUTHSTEP_OIDC_CLIENT_ID"),
-		GroupsClaim:  getDefault("AUTHSTEP_OIDC_GROUPS_CLAIM", "groups"),
-		IssuerGroup:  req("AUTHSTEP_ISSUER_GROUP"),
-		AdminGroup:   req("AUTHSTEP_ADMIN_GROUP"),
+		ListenAddr:  getDefault("AUTHSTEP_LISTEN_ADDR", ":8080"),
+		DBPath:      getDefault("AUTHSTEP_DB_PATH", "authstep.db"),
+		OIDCIssuer:  req("AUTHSTEP_OIDC_ISSUER"),
+		GroupsClaim: getDefault("AUTHSTEP_OIDC_GROUPS_CLAIM", "groups"),
+		IssuerGroup: req("AUTHSTEP_ISSUER_GROUP"),
+		AdminGroup:  req("AUTHSTEP_ADMIN_GROUP"),
 
 		CAURL:         req("AUTHSTEP_CA_URL"),
 		CARootPath:    req("AUTHSTEP_CA_ROOT"),
@@ -119,6 +118,12 @@ func Load() (*Config, error) {
 	} else if c.AdminEmail != "" {
 		errs = append(errs, errors.New("AUTHSTEP_ADMIN_EMAIL needs AUTHSTEP_SMTP_ADDR"))
 	}
+
+	clientID, err := secret("AUTHSTEP_OIDC_CLIENT_ID")
+	if err != nil {
+		errs = append(errs, err)
+	}
+	c.OIDCClientID = clientID
 
 	clientSecret, err := secret("AUTHSTEP_OIDC_CLIENT_SECRET")
 	if err != nil {

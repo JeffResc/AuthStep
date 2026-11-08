@@ -110,6 +110,7 @@ Apple devices must reach `https://ca.example.com/scep/authstep-scep` and trust i
 | Secret / ConfigMap | Contents |
 |---|---|
 | OIDC client secret | key `client-secret` |
+| OIDC client ID (optional) | key `client-id`; set `oidc.clientIDSecret.existingSecret` to read it from a Secret instead of `oidc.clientID`. It can be the client secret's Secret. |
 | Root ConfigMap | `root_ca.crt` |
 | Provisioner Secret | `authstep-jwk.jwe` (the encryptedKey) and `password` (the provisioner password) |
 | Internal TLS (`kubernetes.io/tls`) | Certificate for `authstep.<namespace>.svc.cluster.local`, issued under your root, **with the intermediate in `tls.crt`**. Without the intermediate step-ca cannot verify AuthStep. |
