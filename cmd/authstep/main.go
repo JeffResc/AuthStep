@@ -67,7 +67,7 @@ func run(log *slog.Logger) error {
 			return err
 		}
 		roots.AddCert(root)
-		mailer, err := notify.NewSMTP(cfg.SMTPAddr, cfg.SMTPFrom, cfg.SMTPUsername, cfg.SMTPPassword, roots)
+		mailer, err := notify.NewSMTP(cfg.SMTPAddr, cfg.SMTPFrom, cfg.SMTPUsername, cfg.SMTPPassword, roots, cfg.SMTPAllowPlaintext)
 		if err != nil {
 			return err
 		}

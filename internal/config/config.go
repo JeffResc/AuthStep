@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -52,6 +53,9 @@ type Config struct {
 	SMTPFrom     string
 	SMTPUsername string
 	SMTPPassword string
+	// SMTPAllowPlaintext permits sending without TLS when the server does not
+	// offer STARTTLS, e.g. an internal relay on port 25.
+	SMTPAllowPlaintext bool
 	// AdminEmail receives every audit event. Optional.
 	AdminEmail string
 
@@ -98,6 +102,13 @@ func Load() (*Config, error) {
 	}
 	if c.SMTPAddr != "" {
 		c.SMTPFrom = req("AUTHSTEP_SMTP_FROM")
+		if v := os.Getenv("AUTHSTEP_SMTP_ALLOW_PLAINTEXT"); v != "" {
+			b, err := strconv.ParseBool(v)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("AUTHSTEP_SMTP_ALLOW_PLAINTEXT: %w", err))
+			}
+			c.SMTPAllowPlaintext = b
+		}
 		if c.SMTPUsername != "" {
 			pass, err := secret("AUTHSTEP_SMTP_PASSWORD")
 			if err != nil {

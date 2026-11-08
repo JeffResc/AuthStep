@@ -68,6 +68,9 @@ smtp:
     key: password
   # -- Address that receives every audit event. Optional.
   adminEmail: ""
+  # -- Send without TLS when the server does not offer STARTTLS, e.g. an internal relay on port 25.
+  # Credentials are never sent without TLS, so leave username empty.
+  allowPlaintext: false
 
 # -- CIDRs of reverse proxies whose X-Forwarded-For is trusted for the audit log client IP,
 # e.g. the ingress controller pod network.

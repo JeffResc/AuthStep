@@ -26,18 +26,21 @@ type Mailer interface {
 const smtpTimeout = 30 * time.Second
 
 // SMTP sends mail through one server. Port 465 uses implicit TLS; any other
-// port must offer STARTTLS unless the server is on localhost.
+// port must offer STARTTLS unless the server is on localhost or plaintext is
+// allowed.
 type SMTP struct {
-	addr, host string
-	from       mail.Address
-	username   string
-	password   string
-	roots      *x509.CertPool
+	addr, host     string
+	from           mail.Address
+	username       string
+	password       string
+	roots          *x509.CertPool
+	allowPlaintext bool
 }
 
 // NewSMTP returns a mailer that verifies the server against roots, so an
-// internal relay can use a certificate from the AuthStep CA.
-func NewSMTP(addr, from, username, password string, roots *x509.CertPool) (*SMTP, error) {
+// internal relay can use a certificate from the AuthStep CA. With
+// allowPlaintext, a server without STARTTLS gets mail in plaintext.
+func NewSMTP(addr, from, username, password string, roots *x509.CertPool, allowPlaintext bool) (*SMTP, error) {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, fmt.Errorf("SMTP address: %w", err)
@@ -46,7 +49,7 @@ func NewSMTP(addr, from, username, password string, roots *x509.CertPool) (*SMTP
 	if err != nil {
 		return nil, fmt.Errorf("SMTP from address: %w", err)
 	}
-	return &SMTP{addr: addr, host: host, from: *f, username: username, password: password, roots: roots}, nil
+	return &SMTP{addr: addr, host: host, from: *f, username: username, password: password, roots: roots, allowPlaintext: allowPlaintext}, nil
 }
 
 func (m *SMTP) Send(ctx context.Context, to, subject, body string) error {
@@ -86,7 +89,7 @@ func (m *SMTP) Send(ctx context.Context, to, subject, body string) error {
 			if err := c.StartTLS(tlsConf); err != nil {
 				return err
 			}
-		} else if !isLocalhost(m.host) {
+		} else if !m.allowPlaintext && !isLocalhost(m.host) {
 			return fmt.Errorf("SMTP server %s does not offer STARTTLS", m.addr)
 		}
 	}
