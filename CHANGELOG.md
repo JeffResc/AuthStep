@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.1...authstep-v0.1.2) (2026-11-08)
+
+
+### Features
+
+* **helm:** read the OIDC client ID from an existing Secret via oidc.clientIDSecret ([0fd9cfd](https://github.com/JeffResc/AuthStep/commit/0fd9cfde999fe71cb87db89b6a798868ea3e51ed))
+
 ## [0.1.1](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.0...authstep-v0.1.1) (2026-11-08)
 
 
