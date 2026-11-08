@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.1](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.0...authstep-v0.1.1) (2026-11-08)
+
+
+### Features
+
+* **smtp:** allow plaintext SMTP to relays without STARTTLS ([142c49f](https://github.com/JeffResc/AuthStep/commit/142c49fef5593838a9622f6bf6b742759e00ce9b))
+* **smtp:** allow plaintext SMTP to relays without STARTTLS via the smtp.allowPlaintext helm value ([ba96b64](https://github.com/JeffResc/AuthStep/commit/ba96b64736a78212ce117ac9f9cf73b0aba07897))
+
+
+### Bug Fixes
+
+* **ci:** tag release container images with the version number ([ff653c2](https://github.com/JeffResc/AuthStep/commit/ff653c2ce42fa47f68346a5747a2e51a7fc35b00))
+* **ci:** tag release container images with the version number ([f275baf](https://github.com/JeffResc/AuthStep/commit/f275baffaa3431399ee20f4f0cdd88be5e52f3dc))
+
+
+### Miscellaneous
+
+* **release:** remove the release-as 0.1.0 pin from the release-please config ([b991446](https://github.com/JeffResc/AuthStep/commit/b991446ccfdb62f789fe68bf5169f0c091c60a1c))
+
 ## 0.1.0 (2026-11-08)
 
 
