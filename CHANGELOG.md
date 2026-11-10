@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.3...authstep-v0.1.4) (2026-11-10)
+
+
+### Bug Fixes
+
+* **web:** download new certificate files as normal files on iOS ([e6d9178](https://github.com/JeffResc/AuthStep/commit/e6d91781c2ad9371f08424ac6f9036178b125cbb))
+* **web:** serve new certificate downloads as octet-stream so iOS saves them to Files instead of opening them as profiles ([bfa8ac7](https://github.com/JeffResc/AuthStep/commit/bfa8ac74d41061f007ba77961f2045885958324c))
+
 ## [0.1.3](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.2...authstep-v0.1.3) (2026-11-10)
 
 
