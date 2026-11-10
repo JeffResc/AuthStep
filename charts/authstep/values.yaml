@@ -23,6 +23,9 @@ oidc:
   clientSecret:
     existingSecret: ""
     key: client-secret
+  # -- Require the email_verified claim to be true. Set to false only when
+  # the IdP does not send this claim and users cannot change their own email.
+  requireEmailVerified: true
   # -- ID token claim that lists the user's groups.
   groupsClaim: groups
   # -- Group required to use AuthStep.

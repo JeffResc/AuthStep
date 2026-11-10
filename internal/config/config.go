@@ -23,6 +23,9 @@ type Config struct {
 	OIDCIssuer       string
 	OIDCClientID     string
 	OIDCClientSecret string
+	// OIDCSkipEmailVerified turns off the email_verified check. Load sets it
+	// when AUTHSTEP_OIDC_REQUIRE_EMAIL_VERIFIED is false.
+	OIDCSkipEmailVerified bool
 	// GroupsClaim is the ID token claim that holds the user's groups.
 	GroupsClaim string
 	// IssuerGroup is required to use AuthStep at all.
@@ -98,6 +101,13 @@ func Load() (*Config, error) {
 		SMTPAddr:     os.Getenv("AUTHSTEP_SMTP_ADDR"),
 		SMTPUsername: os.Getenv("AUTHSTEP_SMTP_USERNAME"),
 		AdminEmail:   os.Getenv("AUTHSTEP_ADMIN_EMAIL"),
+	}
+	if v := os.Getenv("AUTHSTEP_OIDC_REQUIRE_EMAIL_VERIFIED"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("AUTHSTEP_OIDC_REQUIRE_EMAIL_VERIFIED: %w", err))
+		}
+		c.OIDCSkipEmailVerified = !b
 	}
 	if c.SMTPAddr != "" {
 		c.SMTPFrom = req("AUTHSTEP_SMTP_FROM")

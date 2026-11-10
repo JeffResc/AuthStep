@@ -109,6 +109,23 @@ tests:
           path: spec.template.spec.containers[0].env
           content: {name: AUTHSTEP_SMTP_ALLOW_PLAINTEXT, value: "true"}
 
+  - it: requires a verified email by default
+    set:
+      step-certificates.enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AUTHSTEP_OIDC_REQUIRE_EMAIL_VERIFIED, value: "false"}
+
+  - it: turns off the email_verified check when oidc.requireEmailVerified is false
+    set:
+      step-certificates.enabled: true
+      oidc.requireEmailVerified: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AUTHSTEP_OIDC_REQUIRE_EMAIL_VERIFIED, value: "false"}
+
   - it: sets the OIDC client ID from oidc.clientID by default
     set:
       step-certificates.enabled: true

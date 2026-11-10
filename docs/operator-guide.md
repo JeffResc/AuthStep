@@ -10,7 +10,7 @@ Apple devices ── Ingress ──▶ step-ca /scep ──▶ AuthStep :9443 (w
 ## 1. Prerequisites
 
 - A root and intermediate CA: see [root-setup.md](root-setup.md).
-- An OIDC client in your identity provider, with redirect URI `https://<authstep host>/auth/callback`, scopes `openid email profile groups`, and a groups claim. Users need a verified email.
+- An OIDC client in your identity provider, with redirect URI `https://<authstep host>/auth/callback`, scopes `openid email profile groups`, and a groups claim. Users need a verified email (`email_verified: true`). If your IdP does not send this claim as true and users cannot change their own email, set `oidc.requireEmailVerified: false`.
 - An ingress controller and a publicly trusted TLS certificate for AuthStep (e.g. cert-manager with Let's Encrypt). The same certificate signs Apple profiles.
 - Optional: an SMTP server, and S3-compatible storage for Litestream backups.
 

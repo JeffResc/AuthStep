@@ -49,8 +49,10 @@ type Auth struct {
 	groupsClaim string
 	issuerGroup string
 	adminGroup  string
-	log         *slog.Logger
-	now         func() time.Time
+	// skipEmailVerified turns off the email_verified check in authorize.
+	skipEmailVerified bool
+	log               *slog.Logger
+	now               func() time.Time
 
 	// Denied renders sign-in failures and CSRF rejections.
 	Denied DeniedFunc
@@ -72,12 +74,13 @@ func New(ctx context.Context, cfg *config.Config, st *store.Store, rec *audit.Re
 			RedirectURL:  cfg.BaseURL.JoinPath("/auth/callback").String(),
 			Scopes:       []string{oidc.ScopeOpenID, "email", "profile", "groups"},
 		},
-		verifier:    provider.Verifier(&oidc.Config{ClientID: cfg.OIDCClientID}),
-		groupsClaim: cfg.GroupsClaim,
-		issuerGroup: cfg.IssuerGroup,
-		adminGroup:  cfg.AdminGroup,
-		log:         log,
-		now:         time.Now,
+		verifier:          provider.Verifier(&oidc.Config{ClientID: cfg.OIDCClientID}),
+		groupsClaim:       cfg.GroupsClaim,
+		issuerGroup:       cfg.IssuerGroup,
+		adminGroup:        cfg.AdminGroup,
+		skipEmailVerified: cfg.OIDCSkipEmailVerified,
+		log:               log,
+		now:               time.Now,
 	}, nil
 }
 
@@ -262,12 +265,13 @@ func (a *Auth) exchange(ctx context.Context, code string, ls *loginState) (*iden
 	return id, nil
 }
 
-// authorize requires a verified email and membership of the issuer group.
+// authorize requires an email, verified unless skipEmailVerified is set, and
+// membership of the issuer group.
 func (a *Auth) authorize(id *identity) error {
 	switch {
 	case id.Email == "":
 		return errors.New("no email claim")
-	case !id.EmailVerified:
+	case !id.EmailVerified && !a.skipEmailVerified:
 		return errors.New("email not verified")
 	case !slices.Contains(id.Groups, a.issuerGroup):
 		return fmt.Errorf("not in issuer group %q", a.issuerGroup)

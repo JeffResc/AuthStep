@@ -85,6 +85,10 @@ spec:
             {{- end }}
             - name: AUTHSTEP_OIDC_CLIENT_SECRET_FILE
               value: /etc/authstep/oidc/client-secret
+            {{- if not .Values.oidc.requireEmailVerified }}
+            - name: AUTHSTEP_OIDC_REQUIRE_EMAIL_VERIFIED
+              value: "false"
+            {{- end }}
             - name: AUTHSTEP_OIDC_GROUPS_CLAIM
               value: {{ .Values.oidc.groupsClaim | quote }}
             - name: AUTHSTEP_ISSUER_GROUP

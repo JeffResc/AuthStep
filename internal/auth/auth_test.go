@@ -156,6 +156,11 @@ func (e *env) advance(d time.Duration) {
 
 func newEnv(t *testing.T, claims map[string]any) *env {
 	t.Helper()
+	return newEnvWith(t, claims, func(*config.Config) {})
+}
+
+func newEnvWith(t *testing.T, claims map[string]any, mod func(*config.Config)) *env {
+	t.Helper()
 	e := &env{idp: newFakeIdP(t), clock: time.Now()}
 	e.idp.Claims = claims
 
@@ -178,6 +183,7 @@ func newEnv(t *testing.T, claims map[string]any) *env {
 		BaseURL: base, OIDCIssuer: e.idp.URL, OIDCClientID: "authstep", OIDCClientSecret: "secret",
 		GroupsClaim: "groups", IssuerGroup: "authstep-users", AdminGroup: "authstep-admins",
 	}
+	mod(cfg)
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
 	a, err := New(context.Background(), cfg, st, audit.New(st, nil, nil, discard), discard)
 	if err != nil {
@@ -297,6 +303,32 @@ func TestLoginDenied(t *testing.T) {
 			}
 			if _, body := e.do(t, http.MethodGet, "/", nil); body != "anonymous" {
 				t.Fatalf("after denied login: %q, want anonymous", body)
+			}
+			e.wantAudit(t, audit.LoginDenied)
+		})
+	}
+}
+
+func TestLoginSkipEmailVerified(t *testing.T) {
+	skip := func(c *config.Config) { c.OIDCSkipEmailVerified = true }
+	unverified := map[string]any{"email": "alice@example.com", "email_verified": false, "groups": []any{"authstep-users"}}
+	e := newEnvWith(t, unverified, skip)
+	if code, body := e.login(t); code != http.StatusOK || !strings.HasPrefix(body, "user=alice@example.com") {
+		t.Fatalf("unverified email: got %d %q, want 200", code, body)
+	}
+
+	tests := []struct {
+		name   string
+		claims map[string]any
+	}{
+		{"no email", map[string]any{"groups": []any{"authstep-users"}}},
+		{"not in issuer group", map[string]any{"email": "alice@example.com", "groups": []any{"other"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := newEnvWith(t, tt.claims, skip)
+			if code, body := e.login(t); code != http.StatusForbidden {
+				t.Fatalf("login: got %d %q, want 403", code, body)
 			}
 			e.wantAudit(t, audit.LoginDenied)
 		})

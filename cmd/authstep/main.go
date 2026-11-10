@@ -78,6 +78,9 @@ func run(log *slog.Logger) error {
 	} else {
 		log.Warn("AUTHSTEP_SMTP_ADDR is not set; no emails will be sent")
 	}
+	if cfg.OIDCSkipEmailVerified {
+		log.Warn("AUTHSTEP_OIDC_REQUIRE_EMAIL_VERIFIED is false; sign-in accepts unverified email addresses")
+	}
 	rec := audit.New(st, notifier, cfg.TrustedProxies, log)
 	a, err := auth.New(ctx, cfg, st, rec, log)
 	if err != nil {
