@@ -7,7 +7,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/smallstep/pkcs7 v0.2.3
 	go.step.sm/crypto v0.92.0
-	golang.org/x/oauth2 v0.37.0
+	golang.org/x/oauth2 v0.38.0
 	howett.net/plist v1.0.1
 	modernc.org/sqlite v1.62.0
 	rsc.io/qr v0.2.0
