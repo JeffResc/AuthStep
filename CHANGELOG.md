@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.3](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.2...authstep-v0.1.3) (2026-11-10)
+
+
+### Features
+
+* **auth:** make the email_verified check optional with oidc.requireEmailVerified ([50055fb](https://github.com/JeffResc/AuthStep/commit/50055fbf5dc34bbc2f8cecd74f5f2a4da80b9837))
+* **auth:** make the email_verified check optional with oidc.requireEmailVerified ([f30e382](https://github.com/JeffResc/AuthStep/commit/f30e38237879ddb4fab1d1084639a1d2c6e67565))
+
+
+### Bug Fixes
+
+* **deps:** update module golang.org/x/oauth2 to v0.38.0 ([ca70995](https://github.com/JeffResc/AuthStep/commit/ca709952e4341a121368d7165762ba7679c9f137))
+* **deps:** update module golang.org/x/oauth2 to v0.38.0 ([20daa00](https://github.com/JeffResc/AuthStep/commit/20daa003420be6773458806820aa0209e3dc3d13))
+
+
+### Miscellaneous
+
+* **deps:** update azure/setup-helm digest to 2f5e7bc ([85a554c](https://github.com/JeffResc/AuthStep/commit/85a554cc79e0d788dc4863c9a9c6f06d81ebe597))
+* **deps:** update azure/setup-helm digest to 2f5e7bc ([a13a814](https://github.com/JeffResc/AuthStep/commit/a13a81400edfb3e95595b3456d31d787eaac1a71))
+
 ## [0.1.2](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.1...authstep-v0.1.2) (2026-11-08)
 
 
