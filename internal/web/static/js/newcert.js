@@ -29,11 +29,11 @@ form.addEventListener("submit", async (event) => {
     const p12 = await buildPKCS12({ privateKeyPKCS8: pkcs8, certs, friendlyName: deviceName, passphrase });
 
     const name = fileName(deviceName);
-    link("download-p12", `${name}.p12`, p12, "application/x-pkcs12");
+    link("download-p12", `${name}.p12`, p12);
     // The same PKCS#12 file under the extension Windows associates with it.
-    link("download-pfx", `${name}.pfx`, p12, "application/x-pkcs12");
-    link("download-pem", `${name}.pem`, certs.map((c) => pem("CERTIFICATE", c)).join(""), "application/x-pem-file");
-    link("download-key", `${name}.key.pem`, pem("PRIVATE KEY", pkcs8), "application/x-pem-file");
+    link("download-pfx", `${name}.pfx`, p12);
+    link("download-pem", `${name}.pem`, certs.map((c) => pem("CERTIFICATE", c)).join(""));
+    link("download-key", `${name}.key.pem`, pem("PRIVATE KEY", pkcs8));
     document.getElementById("passphrase").value = passphrase;
 
     form.hidden = true;
@@ -67,9 +67,12 @@ function show(el, text) {
   el.hidden = false;
 }
 
-function link(id, filename, content, type) {
+// application/octet-stream makes iOS Safari save the file to Files. With a
+// certificate MIME type, iOS opens it as a configuration profile, and apps
+// such as Home Assistant and Immich then cannot import it.
+function link(id, filename, content) {
   const a = document.getElementById(id);
-  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.href = URL.createObjectURL(new Blob([content], { type: "application/octet-stream" }));
   a.download = filename;
 }
 
