@@ -49,6 +49,7 @@ Self-service client certificates for user devices, issued through step-ca.
 | oidc.groupsClaim | string | `"groups"` | ID token claim that lists the user's groups. |
 | oidc.issuer | string | `""` | OIDC issuer URL. AuthStep must reach it at startup. |
 | oidc.issuerGroup | string | `""` | Group required to use AuthStep. |
+| oidc.requireEmailVerified | bool | `true` | Require the email_verified claim to be true. Set to false only when the IdP does not send this claim and users cannot change their own email. |
 | persistence.size | string | `"1Gi"` |  |
 | persistence.storageClass | string | `""` |  |
 | podAnnotations | object | `{}` |  |
