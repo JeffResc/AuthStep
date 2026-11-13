@@ -33,8 +33,17 @@ import (
 	"github.com/JeffResc/AuthStep/internal/store"
 )
 
+// fakeCA records the serials revoked through it.
+type fakeCA struct{ revoked []string }
+
+func (f *fakeCA) Revoke(_ context.Context, serial string, _ int, _ string) error {
+	f.revoked = append(f.revoked, serial)
+	return nil
+}
+
 type env struct {
 	svc   *Service
+	ca    *fakeCA
 	st    *store.Store
 	certs *certs.Service
 	user  store.User
@@ -59,8 +68,8 @@ func newEnv(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
-	e := &env{st: st, clock: time.Now()}
-	e.svc = New(st, audit.New(st, nil, nil, discard), signer, "https://ca.example.com/scep/authstep-scep", discard)
+	e := &env{st: st, ca: &fakeCA{}, clock: time.Now()}
+	e.svc = New(st, audit.New(st, nil, nil, discard), e.ca, signer, "https://ca.example.com/scep/authstep-scep", discard)
 	e.svc.now = func() time.Time { return e.clock }
 	e.certs = certs.New(st, nil, discard)
 	e.user = store.User{Sub: "sub-alice", Email: "alice@example.com", Name: "Alice", LastLoginAt: e.clock}
@@ -244,11 +253,11 @@ func TestChallengeExpires(t *testing.T) {
 	}
 }
 
-func issuedCert(t *testing.T, email, uri string) []byte {
+func issuedCert(t *testing.T, email, uri string, serial int64) []byte {
 	t.Helper()
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	u, _ := url.Parse(uri)
-	tmpl := &x509.Certificate{SerialNumber: big.NewInt(4242), Subject: pkix.Name{CommonName: email},
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(serial), Subject: pkix.Name{CommonName: email},
 		EmailAddresses: []string{email}, URIs: []*url.URL{u},
 		NotBefore: time.Now(), NotAfter: time.Now().Add(365 * 24 * time.Hour)}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
@@ -264,7 +273,7 @@ func TestNotifySuccess(t *testing.T) {
 	id, challenge := e.enrol(t)
 	post(t, e.svc.Challenge, challengeReq(challenge, "tx-1"))
 
-	raw := issuedCert(t, e.user.Email, certs.DeviceURI(id))
+	raw := issuedCert(t, e.user.Email, certs.DeviceURI(id), 4242)
 	body := map[string]any{"scepTransactionID": "tx-1", "x509Certificate": map[string]any{"raw": raw}}
 	for range 2 { // the second is a duplicate notification
 		if code, _, _ := post(t, e.svc.Notify, body); code != http.StatusOK {
@@ -284,6 +293,64 @@ func TestNotifySuccess(t *testing.T) {
 	}
 	if len(entries) != 1 || entries[0].Action != audit.CertIssued || entries[0].ActorSub != e.user.Sub || entries[0].Details["serial"] != "4242" {
 		t.Fatalf("audit = %+v", entries)
+	}
+}
+
+// activate runs one SCEP enrolment through the challenge and the
+// notification, and returns the record ID and the challenge.
+func (e *env) activate(t *testing.T, tx string) (string, string) {
+	t.Helper()
+	id, challenge := e.enrol(t)
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, tx)); !resp.Allow {
+		t.Fatal("challenge denied")
+	}
+	raw := issuedCert(t, e.user.Email, certs.DeviceURI(id), 4242)
+	if code, _, _ := post(t, e.svc.Notify, map[string]any{"scepTransactionID": tx, "x509Certificate": map[string]any{"raw": raw}}); code != http.StatusOK {
+		t.Fatalf("notify: %d", code)
+	}
+	return id, challenge
+}
+
+func TestChallengeReplayDeniedOnceNotIssuing(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	id, challenge := e.activate(t, "tx-1")
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); resp.Allow {
+		t.Fatal("replay after the record became active was allowed")
+	}
+	if err := e.st.RevokeCertificate(ctx, id, e.user.Sub, "test", e.clock); err != nil {
+		t.Fatal(err)
+	}
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); resp.Allow {
+		t.Fatal("replay after the record was revoked was allowed")
+	}
+}
+
+func TestChallengeReplayDeniedAfterExpiry(t *testing.T) {
+	e := newEnv(t)
+	_, challenge := e.enrol(t)
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); !resp.Allow {
+		t.Fatal("challenge denied")
+	}
+	e.clock = e.clock.Add(certs.ChallengeTTL)
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); resp.Allow {
+		t.Fatal("retry after the challenge expired was allowed")
+	}
+}
+
+func TestNotifyRevokesUnrecordableCertificate(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	id, _ := e.activate(t, "tx-1")
+	raw := issuedCert(t, e.user.Email, certs.DeviceURI(id), 4343)
+	if code, _, _ := post(t, e.svc.Notify, map[string]any{"scepTransactionID": "tx-1", "x509Certificate": map[string]any{"raw": raw}}); code != http.StatusOK {
+		t.Fatalf("notify: %d", code)
+	}
+	if len(e.ca.revoked) != 1 || e.ca.revoked[0] != "4343" {
+		t.Fatalf("revoked at CA = %v, want [4343]", e.ca.revoked)
+	}
+	if c, _ := e.st.CertificateByID(ctx, id); c.Status != "active" || c.Serial != "4242" {
+		t.Fatalf("record = %s %q, want active 4242 (untouched)", c.Status, c.Serial)
 	}
 }
 
