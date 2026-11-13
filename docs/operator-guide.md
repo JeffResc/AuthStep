@@ -145,7 +145,10 @@ ca:
 scep: {url: https://ca.example.com/scep/authstep-scep}
 internalTLS: {existingSecret: authstep-internal-tls}
 profileSigning: {existingSecret: authstep-tls}
-trustedProxies: ["10.42.0.0/16"]   # your ingress controller's pod network
+trustedProxies: ["10.42.0.0/16"]   # see section 5: list only the ingress controller
+networkPolicy:
+  httpFrom:                        # only the ingress controller reaches the http port
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}
 ingress:
   enabled: true
   className: nginx
@@ -175,7 +178,9 @@ With `litestream.enabled`, a sidecar continuously replicates the database to the
 
 ## 5. Client IP in the audit log
 
-Set `trustedProxies` to the CIDRs of your reverse proxies. AuthStep then uses the rightmost `X-Forwarded-For` address that is not a trusted proxy. Without it, the audit log records the proxy's address. If your load balancer NATs clients before the ingress controller, the controller itself never sees the real address; preserve it there (e.g. `externalTrafficPolicy: Local` or the PROXY protocol).
+Set `trustedProxies` to the CIDRs of your reverse proxies. AuthStep then uses the rightmost `X-Forwarded-For` address that is not a trusted proxy, for the audit log and the per-IP rate limits. Without it, the audit log records the proxy's address.
+
+List only the ingress controller's addresses. A whole cluster pod CIDR (k3s default `10.42.0.0/16`) trusts every pod, so any pod can forge its client IP. If you cannot narrow the CIDR, set `networkPolicy.httpFrom` so that only the ingress controller can reach the http port. If your load balancer NATs clients before the ingress controller, the controller itself never sees the real address; preserve it there (e.g. `externalTrafficPolicy: Local` or the PROXY protocol).
 
 ## 6. Relying parties (services that accept the certificates)
 

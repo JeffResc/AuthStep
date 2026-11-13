@@ -14,6 +14,10 @@ spec:
     # The UI is public; the ingress controller and users reach it.
     - ports:
         - port: http
+      {{- with .Values.networkPolicy.httpFrom }}
+      from:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     # SCEP webhooks are for step-ca only. AuthStep also requires step-ca's client certificate.
     - from:
         {{- if include "authstep.stepCAEnabled" . }}

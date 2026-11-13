@@ -41,3 +41,16 @@ tests:
       networkPolicy.enabled: false
     asserts:
       - hasDocuments: {count: 0}
+
+  - it: restricts the public port to networkPolicy.httpFrom
+    set:
+      step-certificates.enabled: true
+      networkPolicy.httpFrom:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}
+    asserts:
+      - equal:
+          path: spec.ingress[0]
+          value:
+            ports: [{port: http}]
+            from:
+              - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}
