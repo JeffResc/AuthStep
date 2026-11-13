@@ -53,7 +53,8 @@ type Enrolment struct {
 // ConsumeSCEPChallenge accepts a challenge for transactionID and moves its
 // record from pending to issuing. step-ca retries a webhook with the same
 // transaction ID, so a challenge already consumed by the same transaction is
-// accepted again; any other transaction gets ErrChallengeUsed.
+// accepted again while the record is still issuing and the challenge has not
+// expired; any other transaction gets ErrChallengeUsed.
 func (s *Store) ConsumeSCEPChallenge(ctx context.Context, hash, transactionID string, now time.Time) (*Enrolment, error) {
 	var e *Enrolment
 	err := s.inTx(ctx, func(tx *sql.Tx) error {
@@ -75,8 +76,16 @@ func (s *Store) ConsumeSCEPChallenge(ctx context.Context, hash, transactionID st
 		switch {
 		case consumed.Valid && usedBy.String != transactionID:
 			return ErrChallengeUsed
-		case !consumed.Valid && now.Unix() >= expires:
+		case now.Unix() >= expires:
 			return ErrChallengeExpired
+		case consumed.Valid:
+			var status string
+			if err := tx.QueryRowContext(ctx, `SELECT status FROM certificates WHERE id = ?`, certID).Scan(&status); err != nil {
+				return err
+			}
+			if status != "issuing" {
+				return ErrChallengeUsed
+			}
 		case !consumed.Valid:
 			if _, err := tx.ExecContext(ctx, `UPDATE scep_challenges SET consumed_at = ?, transaction_id = ? WHERE cert_id = ?`,
 				now.Unix(), transactionID, certID); err != nil {

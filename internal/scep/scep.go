@@ -28,17 +28,23 @@ const maxWebhookBody = 64 << 10
 
 var ErrNotSCEP = errors.New("certificate is not a pending SCEP enrolment")
 
+// CA is the part of the step-ca client the service uses.
+type CA interface {
+	Revoke(ctx context.Context, serial string, reasonCode int, reason string) error
+}
+
 type Service struct {
 	store   *store.Store
 	audit   *audit.Recorder
+	ca      CA
 	signer  *keypair.File
 	scepURL string
 	log     *slog.Logger
 	now     func() time.Time
 }
 
-func New(st *store.Store, rec *audit.Recorder, signer *keypair.File, scepURL string, log *slog.Logger) *Service {
-	return &Service{store: st, audit: rec, signer: signer, scepURL: scepURL, log: log, now: time.Now}
+func New(st *store.Store, rec *audit.Recorder, c CA, signer *keypair.File, scepURL string, log *slog.Logger) *Service {
+	return &Service{store: st, audit: rec, ca: c, signer: signer, scepURL: scepURL, log: log, now: time.Now}
 }
 
 // Profile creates the record's one challenge and returns the signed profile
@@ -271,7 +277,20 @@ func (s *Service) Notify(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, webhookResponse{Allow: true}) // duplicate notification
 		return
 	}
-	if err := s.store.ActivateCertificate(r.Context(), e.ID, serial, crt.NotBefore, crt.NotAfter); err != nil {
+	err = s.store.ActivateCertificate(r.Context(), e.ID, serial, crt.NotBefore, crt.NotAfter)
+	if errors.Is(err, store.ErrNotPending) && e.Serial != serial {
+		// The record is no longer issuing, so this certificate can never be
+		// recorded or revoked from AuthStep. Revoke it now.
+		s.log.Error("scep certificate for a record that is no longer issuing; revoking it",
+			"id", e.ID, "status", e.Status, "serial", serial, "sub", e.UserSub)
+		if err := s.ca.Revoke(r.Context(), serial, 0, "not recorded by AuthStep"); err != nil {
+			s.fail(w, err)
+			return
+		}
+		writeJSON(w, webhookResponse{Allow: true})
+		return
+	}
+	if err != nil {
 		s.log.Error("issued certificate not recorded", "id", e.ID, "serial", serial, "sub", e.UserSub, "err", err)
 		s.fail(w, err)
 		return

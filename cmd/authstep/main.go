@@ -100,7 +100,7 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	scepSvc := scep.New(st, rec, signer, cfg.SCEPURL, log)
+	scepSvc := scep.New(st, rec, caClient, signer, cfg.SCEPURL, log)
 	handler, err := web.New(a, certs.New(st, caClient, log), scepSvc, st, rec, log, cfg.BaseURL)
 	if err != nil {
 		return err
