@@ -2,8 +2,8 @@ apiVersion: v2
 name: authstep
 description: Self-service client certificates for user devices, issued through step-ca.
 type: application
-version: 0.1.4
-appVersion: 0.1.4
+version: 0.1.5
+appVersion: 0.1.5
 dependencies:
   - name: step-certificates
     version: 1.30.1

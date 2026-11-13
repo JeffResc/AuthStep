@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.5](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.4...authstep-v0.1.5) (2026-11-13)
+
+
+### Bug Fixes
+
+* **admin:** cancel pending SCEP enrolments when revoking all certificates ([b9a7d6e](https://github.com/JeffResc/AuthStep/commit/b9a7d6e6b5dc392f159247396afe9558a797e7b1))
+* **admin:** cancel pending SCEP enrolments when revoking all certificates ([398e2b3](https://github.com/JeffResc/AuthStep/commit/398e2b30e74f5fb304156030cd022cd99f447936))
+* **audit:** ignore non-IP forwarded hops and document narrow trusted proxies ([1be0d98](https://github.com/JeffResc/AuthStep/commit/1be0d9857bf844756cfe0d7df818538c4b9f19e6))
+* **audit:** ignore non-IP forwarded hops and document narrow trusted proxies ([003a256](https://github.com/JeffResc/AuthStep/commit/003a256328cee9d586574fa260c75f2cae9f9054))
+* **deps:** update Go to 1.26.11 to fix GO-2026-6859 in net/http ([3641da2](https://github.com/JeffResc/AuthStep/commit/3641da28ec1911d563263f276b85a71eef371544))
+* **deps:** update Go to 1.26.11 to fix GO-2026-6859 in net/http ([b49822e](https://github.com/JeffResc/AuthStep/commit/b49822e8070669e725099300025cb0c9215f2673))
+* **scep:** deny same-transaction challenge replay once the enrolment is no longer issuing ([7031d27](https://github.com/JeffResc/AuthStep/commit/7031d278b0206edb4aeff894eb82b81f54c6c75d))
+* **scep:** deny same-transaction challenge replay once the enrolment is no longer issuing ([06cc10e](https://github.com/JeffResc/AuthStep/commit/06cc10ec93977546a4352b32585bc574adc1b754))
+
+
+### Miscellaneous
+
+* **deps:** update dependency helm to v4.3.2 ([c68ad4a](https://github.com/JeffResc/AuthStep/commit/c68ad4adc0fea50af5df2827c0fa0028421f74b4))
+* **deps:** update dependency helm to v4.3.2 ([ad8da9b](https://github.com/JeffResc/AuthStep/commit/ad8da9b0a2cbf060034c58f8fa4be6982407e072))
+* **deps:** update go module directive to v1.27.4 ([993b6a4](https://github.com/JeffResc/AuthStep/commit/993b6a405bf667bbc5c4ea5f85a216dc12d1a4be))
+* **deps:** update go module directive to v1.27.4 ([7167d40](https://github.com/JeffResc/AuthStep/commit/7167d40baae8e74f65155443d569e95bbeba4196))
+* **deps:** update golang docker tag to v1.27.4 ([0a1d2d3](https://github.com/JeffResc/AuthStep/commit/0a1d2d38c979c52a1e1c330c79cceed7e846a275))
+* **deps:** update golang docker tag to v1.27.4 ([51e6ee0](https://github.com/JeffResc/AuthStep/commit/51e6ee09eed718027e5cb4fcbd668a59ea346e15))
+
 ## [0.1.4](https://github.com/JeffResc/AuthStep/compare/authstep-v0.1.3...authstep-v0.1.4) (2026-11-10)
 
 
