@@ -642,7 +642,7 @@ func TestRevokeAllKeepsIssuingEnrolmentTracked(t *testing.T) {
 	}
 	// step-ca signs the certificate it already accepted. The record must
 	// become active so that an admin can see and revoke it.
-	raw := issuedCert(t, e.user.Email, certs.DeviceURI(id))
+	raw := issuedCert(t, e.user.Email, certs.DeviceURI(id), 4242)
 	body := map[string]any{"scepTransactionID": "tx-1", "x509Certificate": map[string]any{"raw": raw}}
 	if code, _, _ := post(t, e.svc.Notify, body); code != http.StatusOK {
 		t.Fatalf("notify: %d", code)
