@@ -80,8 +80,9 @@ smtp:
   # Credentials are never sent without TLS, so leave username empty.
   allowPlaintext: false
 
-# -- CIDRs of reverse proxies whose X-Forwarded-For is trusted for the audit log client IP,
-# e.g. the ingress controller pod network.
+# -- CIDRs of reverse proxies whose X-Forwarded-For is trusted for the audit log client IP and rate limits.
+# List only the ingress controller's addresses. A whole pod CIDR (e.g. k3s 10.42.0.0/16) trusts every pod
+# in the cluster; then also set networkPolicy.httpFrom so only the ingress controller reaches the http port.
 trustedProxies: []
 
 persistence:
@@ -122,6 +123,9 @@ ingress:
 networkPolicy:
   # -- Restrict the webhook port to step-ca pods. The public port stays open to everything.
   enabled: true
+  # -- NetworkPolicy peers allowed to reach the http port, e.g. the ingress controller's namespace.
+  # Empty: open to everything. Set it when trustedProxies is set.
+  httpFrom: []
   # -- Where step-ca runs when the subchart is disabled. With the subchart, its pods are selected automatically.
   stepCA:
     namespaceSelector:

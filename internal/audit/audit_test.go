@@ -19,7 +19,9 @@ func TestClientIP(t *testing.T) {
 		{"chain of trusted proxies", "10.42.0.5:4000", []string{"198.51.100.1, 10.42.1.1", "10.42.2.2"}, "198.51.100.1"},
 		{"no header", "10.42.0.5:4000", nil, "10.42.0.5"},
 		{"all hops trusted", "10.42.0.5:4000", []string{"10.42.9.9"}, "10.42.0.5"},
-		{"garbage hop is untrusted", "10.42.0.5:4000", []string{"not-an-ip"}, "not-an-ip"},
+		{"non-IP hop falls back to peer", "10.42.0.5:4000", []string{"not-an-ip"}, "10.42.0.5"},
+		{"non-IP hop stops the walk", "10.42.0.5:4000", []string{"198.51.100.1, not-an-ip"}, "10.42.0.5"},
+		{"IPv4-mapped IPv6 hop is unmapped", "10.42.0.5:4000", []string{"::ffff:198.51.100.1"}, "198.51.100.1"},
 		{"IPv6 trusted proxy", "[fd00::1]:4000", []string{"2001:db8::7"}, "2001:db8::7"},
 	}
 	for _, tt := range tests {

@@ -74,14 +74,20 @@ func (rec *Recorder) Record(r *http.Request, actor Actor, action, target string,
 
 // ClientIP is the TCP peer address, unless the peer is a trusted proxy. Then
 // it is the rightmost X-Forwarded-For address that is not a trusted proxy:
-// addresses further left were supplied by the client and can be forged.
+// addresses further left were supplied by the client and can be forged. A hop
+// that is not an IP address ends the walk and the peer address is used.
 func ClientIP(r *http.Request, trusted []netip.Prefix) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
 	}
-	if !isTrusted(host, trusted) {
+	peer, err := netip.ParseAddr(host)
+	if err != nil {
 		return host
+	}
+	peer = peer.Unmap()
+	if !isTrusted(peer, trusted) {
+		return peer.String()
 	}
 	var hops []string
 	for _, h := range r.Header.Values("X-Forwarded-For") {
@@ -90,19 +96,19 @@ func ClientIP(r *http.Request, trusted []netip.Prefix) string {
 		}
 	}
 	for i := len(hops) - 1; i >= 0; i-- {
-		if !isTrusted(hops[i], trusted) {
-			return hops[i]
+		ip, err := netip.ParseAddr(hops[i])
+		if err != nil {
+			break
+		}
+		ip = ip.Unmap()
+		if !isTrusted(ip, trusted) {
+			return ip.String()
 		}
 	}
-	return host
+	return peer.String()
 }
 
-func isTrusted(addr string, trusted []netip.Prefix) bool {
-	ip, err := netip.ParseAddr(addr)
-	if err != nil {
-		return false
-	}
-	ip = ip.Unmap()
+func isTrusted(ip netip.Addr, trusted []netip.Prefix) bool {
 	for _, p := range trusted {
 		if p.Contains(ip) {
 			return true

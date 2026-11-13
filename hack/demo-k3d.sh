@@ -236,7 +236,7 @@ smtp:
   addr: mailpit:1025
   from: AuthStep demo <authstep@demo.localhost>
   adminEmail: security@demo.localhost
-trustedProxies: ["10.42.0.0/16"]
+trustedProxies: ["10.42.0.0/16"]   # demo only: trusts every pod in the cluster
 ingress: {enabled: true, className: traefik, host: authstep.localhost}
 step-certificates:
   enabled: true
