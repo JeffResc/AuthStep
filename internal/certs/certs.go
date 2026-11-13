@@ -237,15 +237,24 @@ func (s *Service) Revoke(ctx context.Context, c *store.Certificate, actorSub str
 	return nil
 }
 
-// RevokeAll revokes every active certificate of userSub. It stops at the
-// first failure and returns the certificates revoked so far.
+// RevokeAll cancels userSub's pending Apple enrolments and revokes every
+// active certificate of userSub. It stops at the first failure and returns
+// the certificates revoked so far.
 func (s *Service) RevokeAll(ctx context.Context, userSub, actorSub string) ([]store.Certificate, error) {
+	if err := s.store.CancelPendingSCEPEnrolments(ctx, userSub); err != nil {
+		return nil, err
+	}
 	all, err := s.store.ListUserCertificates(ctx, userSub)
 	if err != nil {
 		return nil, err
 	}
 	var done []store.Certificate
 	for _, c := range all {
+		if c.Status == "issuing" {
+			// step-ca already accepted this enrolment. The record becomes
+			// active when step-ca reports the certificate, and must then be revoked.
+			s.log.Warn("certificate still issuing during revoke-all; revoke it once active", "id", c.ID, "owner", c.UserSub, "by", actorSub)
+		}
 		if c.Status != "active" {
 			continue
 		}

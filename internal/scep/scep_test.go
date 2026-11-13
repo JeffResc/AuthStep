@@ -522,3 +522,65 @@ func TestNormalizeCode(t *testing.T) {
 		}
 	}
 }
+
+func TestRevokeAllCancelsPendingEnrolments(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	id, challenge := e.enrol(t)
+	tv, err := e.certs.Reserve(ctx, e.user, "Apple TV", "scep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, _, err := e.svc.CreateLink(ctx, e.user, tv.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bob := store.User{Sub: "sub-bob", Email: "bob@example.com", Name: "Bob", LastLoginAt: e.clock}
+	if err := e.st.UpsertUser(ctx, bob); err != nil {
+		t.Fatal(err)
+	}
+	other, err := e.certs.Reserve(ctx, bob, "iPhone", "scep")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := e.certs.RevokeAll(ctx, e.user.Sub, "sub-admin"); err != nil {
+		t.Fatal(err)
+	}
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); resp.Allow {
+		t.Fatal("a downloaded profile's challenge was allowed after revoke-all")
+	}
+	if _, err := e.svc.ProfileByLink(ctx, code); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("device link after revoke-all: err = %v, want ErrNotFound", err)
+	}
+	for _, x := range []string{id, tv.ID} {
+		if _, err := e.st.CertificateByID(ctx, x); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("pending record after revoke-all: err = %v, want ErrNotFound", err)
+		}
+	}
+	if c, err := e.st.CertificateByID(ctx, other.ID); err != nil || c.Status != "pending" {
+		t.Fatalf("other user's record: %+v, err %v; want pending", c, err)
+	}
+}
+
+func TestRevokeAllKeepsIssuingEnrolmentTracked(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	id, challenge := e.enrol(t)
+	if _, resp, _ := post(t, e.svc.Challenge, challengeReq(challenge, "tx-1")); !resp.Allow {
+		t.Fatal("challenge denied")
+	}
+	if _, err := e.certs.RevokeAll(ctx, e.user.Sub, "sub-admin"); err != nil {
+		t.Fatal(err)
+	}
+	// step-ca signs the certificate it already accepted. The record must
+	// become active so that an admin can see and revoke it.
+	raw := issuedCert(t, e.user.Email, certs.DeviceURI(id))
+	body := map[string]any{"scepTransactionID": "tx-1", "x509Certificate": map[string]any{"raw": raw}}
+	if code, _, _ := post(t, e.svc.Notify, body); code != http.StatusOK {
+		t.Fatalf("notify: %d", code)
+	}
+	if c, err := e.st.CertificateByID(ctx, id); err != nil || c.Status != "active" {
+		t.Fatalf("record = %+v, err %v; want active", c, err)
+	}
+}
