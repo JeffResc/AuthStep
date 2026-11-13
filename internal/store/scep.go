@@ -183,3 +183,22 @@ func (s *Store) CancelSCEPEnrolment(ctx context.Context, userSub, id string) (*C
 	})
 	return c, err
 }
+
+// CancelPendingSCEPEnrolments deletes all of userSub's pending Apple
+// enrolments, their device links and their challenges, so no downloaded
+// profile or unused link can enrol. Issuing records are kept: step-ca already
+// has their CSR, and the NOTIFYING webhook must still record the certificate
+// so that it can be revoked.
+func (s *Store) CancelPendingSCEPEnrolments(ctx context.Context, userSub string) error {
+	return s.inTx(ctx, func(tx *sql.Tx) error {
+		const pending = `SELECT id FROM certificates WHERE user_sub = ? AND method = 'scep' AND status = 'pending'`
+		if _, err := tx.ExecContext(ctx, `DELETE FROM device_links WHERE cert_id IN (`+pending+`)`, userSub); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM scep_challenges WHERE cert_id IN (`+pending+`)`, userSub); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `DELETE FROM certificates WHERE user_sub = ? AND method = 'scep' AND status = 'pending'`, userSub)
+		return err
+	})
+}
