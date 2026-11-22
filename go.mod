@@ -9,7 +9,7 @@ require (
 	go.step.sm/crypto v0.92.0
 	golang.org/x/oauth2 v0.38.0
 	howett.net/plist v1.0.1
-	modernc.org/sqlite v1.62.0
+	modernc.org/sqlite v1.63.0
 	rsc.io/qr v0.2.0
 )
 
